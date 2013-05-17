@@ -88,3 +88,27 @@ it like this, from your Time Machine backups folder:
 This tells you how the most recent backup differed from the
 penultimate one. Handy if Time Machine backs up a ton of stuff, and
 you're not sure why.
+
+** make_looping_mp3
+
+Makes a seamlessly-looping MP3 from a WAV file. Requires LAME
+([[http://lame.sourceforge.net/]]).
+
+For the principle, see [[http://www.compuphase.com/mp3/mp3loops.htm]].
+
+** wavdump
+
+Lists WAV file chunks. Pretty-prints chunks it knows about.
+
+** TextScripts/
+
+Various text-processing scripts for use with a text editor.
+
+For emacs, use `M-x shell-command-on-region`.
+
+For Xcode 4.x, use my UserScripts fixin from
+[[https://github.com/davekeck/Xcode-4-Fixins]].
+
+For Visual Studio 2012, use my VSScripts addin from
+[[https://github.com/tom-seddon/VSScripts]].
+
