@@ -18,7 +18,10 @@ l=shlex.shlex(raw)
 
 l.commenters+="/" # not QUITE right...
 
-next(l,"enum")
+x=next(l,["enum","typedef"])
+if x=="typedef":
+    x=next(l,"enum")
+
 enum_name=next(l)
 if enum_name=="{":
     enum_name=None
@@ -37,19 +40,20 @@ while 1:
 
     sep=next(l,["}",
                 ",",
-                "="])
+                "=",
+                ";"])
     if sep==",":
         # ok, next one.
         pass
-    elif sep=="}":
+    elif sep=="}" or sep==";":
         # ok, done.
         break
     if sep=="=":
         # doesn't handle expressions!
-        while next(l)!=",":
+        while next(l) not in [",","}"]:
             pass
 
-next(l,";")
+#next(l,";")
             
 sys.stdout.write(raw[:l.instream.tell()])
 sys.stdout.write("\n\n")
