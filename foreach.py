@@ -46,16 +46,22 @@ def main(options,
         if not replaced:
             argv.append(line)
 
+        progress_line=""
+
         if options.progress:
-            pe("%d/%d"%(1+i,n))
+            progress_line+="%d/%d"%(1+i,n)
 
         if options.progress and options.verbose:
-            pe(": ")
+            progress_line+=": "
 
         if options.verbose:
-            pe("%s"%" ".join(argv))
+            progress_line+=" ".join(argv)
 
-        if options.progress or options.verbose:
+        if options.progress and not options.verbose:
+            pe(progress_line)
+            pe("\r")
+        elif options.progress or options.verbose:
+            pe(progress_line)
             pe("\n")
 
         r=subprocess.call(argv,
@@ -65,6 +71,9 @@ def main(options,
             pe("FATAL: Command returned %d: %s\n"%(r,
                                                    " ".join(argv)))
             sys.exit(1)
+
+        if options.progress and not options.verbose:
+            pe(" "*len(progress_line)+"\r")
 
 ##########################################################################
 ##########################################################################
