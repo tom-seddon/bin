@@ -1,5 +1,11 @@
 import sys,argparse,os,subprocess
 
+got_win32console=True
+try:
+    import win32console
+except:
+    got_win32console=False
+
 ##########################################################################
 ##########################################################################
 
@@ -18,6 +24,10 @@ def main(options,
     if len(cmd_argv)==0:
         pe("FATAL: No command specified.\n")
         sys.exit(1)
+
+    if options.dry_run:
+        options.progress=True
+        options.verbose=True
 
     if len(options.inputs)==0:
         lines=[x.strip() for x in sys.stdin.readlines()]
@@ -61,16 +71,33 @@ def main(options,
             pe(progress_line)
             pe("\r")
         elif options.progress or options.verbose:
+            if got_win32console:
+                con_stdout=win32console.GetStdHandle(win32console.STD_OUTPUT_HANDLE)
+                con_info=con_stdout.GetConsoleScreenBufferInfo()
+
+                con_attr=con_info["Attributes"]
+                con_stdout.SetConsoleTextAttribute(((con_attr>>4)&0x0F)|((con_attr<<4)&0xF0))
+                
             pe(progress_line)
+
+            if got_win32console:
+                con_stdout.SetConsoleTextAttribute(con_attr)
+            
             pe("\n")
 
-        r=subprocess.call(argv,
-                          shell=options.shell)
+        r=0
+        if not options.dry_run:
+            r=subprocess.call(argv,
+                              shell=options.shell)
+            
         #r=os.system(cmd)
         if r!=0:
-            pe("FATAL: Command returned %d: %s\n"%(r,
-                                                   " ".join(argv)))
-            sys.exit(1)
+            pe("%s: Command returned %d: %s\n"%("WARNING" if options.keep_going else "ERROR",
+                                                r,
+                                                " ".join(argv)))
+
+            if not options.keep_going:
+                sys.exit(1)
 
         if options.progress and not options.verbose:
             pe(" "*len(progress_line)+"\r")
@@ -129,6 +156,20 @@ if __name__=="__main__":
                         action="store_true",
                         help=
                         """If specified, print progress to stderr.""")
+
+    parser.add_argument("-n",
+                        "--dry-run",
+                        default=False,
+                        action="store_true",
+                        help=
+                        """If specified, don't actually run any commands (implies --progress and --verbose).""")
+
+    parser.add_argument("-k",
+                        "--keep-going",
+                        default=False,
+                        action="store_true",
+                        help=
+                        """If specified, keep going even when a command fails.""")
 
     # Work up to the '-'
     argv=sys.argv[1:]
