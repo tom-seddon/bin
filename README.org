@@ -5,9 +5,21 @@ folder.
 
 Most respond to =-h=.
 
+** count
+
+Counts occurrences of contents of lines on stdin, and prints the
+tallies.
+
 ** dateize
 
 Move files into folders according to their creation date.
+
+** diff2
+
+Does a folder diff without printing out too much verbiage.
+
+Can optionally invoke =diff= on edited files, to get the verbiage
+back.
 
 ** dump
 
@@ -16,6 +28,15 @@ A version of the handy =*DUMP= command from the BBC Micro.
 ** find_dup
 
 Find duplicate files.
+
+** foreach
+
+Reads a list of files on stdin, one per line, and executes a command
+for each file.
+
+(This works like =xargs=, but it makes lighter work of files that have
+spaces in their names, and can work with the output from a wider range
+of tools, particularly on Windows.)
 
 ** improve-xcode-asm-output
 
@@ -58,10 +79,44 @@ How to use:
 4. Use the Upload Devices button in the Provisioning Portal to bulk
    add the new devices. Point it at the text file created in step 3.
 
+** make_looping_mp3
+
+Makes a seamlessly-looping MP3 from a WAV file. Requires LAME
+([[http://lame.sourceforge.net/]]).
+
+For the principle, see [[http://www.compuphase.com/mp3/mp3loops.htm]].
+
 ** mkpasswd
 
 Makes up a random password that can be copied from iTerm2 with one
 double-click.
+
+** modify
+
+Modifies a file by changing every byte. For binary files, each byte is
+XORed with 255; for ASCII text files (use =-a=), it does a rot47 on
+the 94 printable chars. (=-a= may not actually change anything, of
+course, if the file isn't really ASCII.)
+
+** p4changelist
+
+Prints contents of the specified Perforce changelist to stdout, one
+name per line. For use with =p4 -x -= or =foreach= (qv).
+
+** p4status
+
+Like p4 status, but much quicker, because it assumes read-only files
+haven't been edited. Can produce output in a format suitable for =p4
+-x -= or =foreach= (qv).
+
+** pmacs
+
+Sends stdin to emacs via =emacsclient=, so you can use emacs as the
+target of pipes.
+
+If using recentf, add the following to your =.emacs=:
+
+: (add-to-list 'recentf-exclude "pmacs\\.[0-9]+\\.dat$")
 
 ** symcrash
 
@@ -75,30 +130,8 @@ don't like perl, and I don't like Xcode.
 all the dSYMs found to find the one for the binary in question. This
 is much more reliable.
 
-=symcrash= does not support as many different kinds of crash log types
-as =
-
-** tma
-
-Analyze Time Machine backups. There are various options, but just run
-it like this, from your Time Machine backups folder:
-
-: tma -wum
-
-This tells you how the most recent backup differed from the
-penultimate one. Handy if Time Machine backs up a ton of stuff, and
-you're not sure why.
-
-** make_looping_mp3
-
-Makes a seamlessly-looping MP3 from a WAV file. Requires LAME
-([[http://lame.sourceforge.net/]]).
-
-For the principle, see [[http://www.compuphase.com/mp3/mp3loops.htm]].
-
-** wavdump
-
-Lists WAV file chunks. Pretty-prints chunks it knows about.
+(=symcrash= does not support as many different kinds of crash log
+types as Apple's perl script.)
 
 ** TextScripts/
 
@@ -111,4 +144,19 @@ For Xcode 4.x, use my UserScripts fixin from
 
 For Visual Studio 2012, use my VSScripts addin from
 [[https://github.com/tom-seddon/VSScripts]].
+
+** tma
+
+Analyze Time Machine backups. There are various options, but just run
+it like this, from your Time Machine backups folder:
+
+: tma -wum
+
+This tells you how the most recent backup differed from the
+penultimate one. Handy if Time Machine backs up a ton of stuff, and
+you're not sure why.
+
+** wavdump
+
+Lists WAV file chunks. Pretty-prints chunks it knows about.
 
