@@ -1,4 +1,4 @@
-import sys,argparse,os,subprocess
+import sys,argparse,os,subprocess,pywintypes
 
 got_win32console=True
 try:
@@ -28,6 +28,9 @@ def main(options,
     if options.dry_run:
         options.progress=True
         options.verbose=True
+
+    if options.keep_going_quietly:
+        options.keep_going=True
 
     if len(options.inputs)==0:
         lines=[x.strip() for x in sys.stdin.readlines()]
@@ -67,20 +70,28 @@ def main(options,
         if options.verbose:
             progress_line+=" ".join(argv)
 
+        if got_win32console:
+            win32console.SetConsoleTitle("%d/%d: %s"%(1+i,n," ".join(argv)))
+
         if options.progress and not options.verbose:
             pe(progress_line)
             pe("\r")
         elif options.progress or options.verbose:
+            con_stdout=None
+            
             if got_win32console:
                 con_stdout=win32console.GetStdHandle(win32console.STD_OUTPUT_HANDLE)
-                con_info=con_stdout.GetConsoleScreenBufferInfo()
-
-                con_attr=con_info["Attributes"]
-                con_stdout.SetConsoleTextAttribute(((con_attr>>4)&0x0F)|((con_attr<<4)&0xF0))
+                try:
+                    con_info=con_stdout.GetConsoleScreenBufferInfo()
+                    con_attr=con_info["Attributes"]
+                    con_stdout.SetConsoleTextAttribute(((con_attr>>4)&0x0F)|((con_attr<<4)&0xF0))
+                except pywintypes.error:
+                    # probably redirected.
+                    con_stdout=None
                 
             pe(progress_line)
 
-            if got_win32console:
+            if con_stdout!=None:
                 con_stdout.SetConsoleTextAttribute(con_attr)
             
             pe("\n")
@@ -92,15 +103,18 @@ def main(options,
             
         #r=os.system(cmd)
         if r!=0:
-            pe("%s: Command returned %d: %s\n"%("WARNING" if options.keep_going else "ERROR",
-                                                r,
-                                                " ".join(argv)))
+            if not options.keep_going_quietly:
+                pe("%s: Command returned %d: %s\n"%("WARNING" if options.keep_going else "ERROR",
+                                                    r,
+                                                    " ".join(argv)))
 
             if not options.keep_going:
-                sys.exit(1)
+                return 1
 
         if options.progress and not options.verbose:
             pe(" "*len(progress_line)+"\r")
+
+    return 0
 
 ##########################################################################
 ##########################################################################
@@ -171,6 +185,22 @@ if __name__=="__main__":
                         help=
                         """If specified, keep going even when a command fails.""")
 
+    parser.add_argument("-K",
+                        "--keep-going-quietly",
+                        default=False,
+                        action="store_true",
+                        help=
+                        """If specified, keep going even when a
+                        command fails, and don't print a warning.
+
+                        """)
+
+    # parser.add_argument("--max-args",
+    #                     metavar="MAX-ARGS",
+    #                     default=1,
+    #                     help=
+    #                     """Use at most %(metavar)s arguments (default %(default)s) per command line. 
+
     # Work up to the '-'
     argv=sys.argv[1:]
     
@@ -179,5 +209,16 @@ if __name__=="__main__":
     else:
         sep_index=argv.index("-")
 
-    main(parser.parse_args(argv[:sep_index]),
-         argv[sep_index+1:])
+    old_title=None
+    if got_win32console:
+        old_title=win32console.GetConsoleTitle()
+
+    result=main(parser.parse_args(argv[:sep_index]),
+                argv[sep_index+1:])
+
+    if got_win32console:
+        if old_title is not None:
+            win32console.SetConsoleTitle(old_title)
+    
+    sys.exit(result)
+    
