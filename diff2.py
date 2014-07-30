@@ -79,14 +79,15 @@ def are_files_same(a,b):
 def main(options):
     g_verbose=options.verbose
 
-    if not options.adds and not options.edits and not options.dels:
+    if not options.adds and not options.edits and not options.dels and not options.same:
         options.adds=True
         options.edits=True
         options.dels=True
+        options.same=False
 
     if options.bare:
-        if int(options.adds)+int(options.edits)+int(options.dels)!=1:
-            print>>sys.stderr,"FATAL: when using -b, must specify only one of -a/-d/-e."
+        if int(options.adds)+int(options.edits)+int(options.dels)+int(options.same)!=1:
+            print>>sys.stderr,"FATAL: when using -b, must specify only one of -a/-d/-e/-s."
             sys.exit(1)
 
     if options.diff and not options.edits:
@@ -101,18 +102,23 @@ def main(options):
     set_a=set([get_normpath(x) for x in fs_a])
     set_b=set([get_normpath(x) for x in fs_b])
 
-    if options.adds or options.edits:
+    if options.adds or options.edits or options.same:
         for f_a in fs_a:
             if get_normpath(f_a) in set_b:
-                if options.edits:
+                if options.edits or options.same:
                     # compare
                     f_a_full=get_full_fname(options.a,f_a)
                     f_b_full=get_full_fname(options.b,f_a)
-                    if not are_files_same(f_a_full,f_b_full):
-                        print_file(options,"edit",options.b,f_a)
+                    same=are_files_same(f_a_full,f_b_full)
+                    if same:
+                        if options.same:
+                            print_file(options,"same",options.b,f_a)
+                    else:
+                        if options.edits:
+                            print_file(options,"edit",options.b,f_a)
 
-                        if options.diff:
-                            result=subprocess.call(["diff.exe","-u",f_a_full,f_b_full])
+                            if options.diff:
+                                result=subprocess.call(["diff.exe","-u",f_a_full,f_b_full])
                         
             else:
                 # deleted
@@ -159,6 +165,11 @@ if __name__=="__main__":
                         dest="edits",
                         action="store_true",
                         help="if specified, show edits")
+
+    parser.add_argument("-s",
+                        dest="same",
+                        action="store_true",
+                        help="if specified, show unchanged files")
 
     parser.add_argument("--diff",
                         action="store_true",
