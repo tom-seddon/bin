@@ -90,6 +90,9 @@ def symbolicate_crash_file(args,
         fatal("Couldn't find Binary Images section.")
 
     for line in binary_images_section:
+        if line.strip()=="":
+            break
+        
         parts=line.split(None,7)
 
         m=Module(parts[3],
@@ -166,7 +169,7 @@ def symbolicate_crash_file(args,
     for crash_line in crash_lines:
         parts=crash_line.split()
 
-        if (len(parts)==3 and parts[0]=="Thread" and parts[1].isdigit() and parts[2]=="Crashed:"):
+        if len(parts)==3 and parts[0]=="Thread" and parts[1].isdigit() and parts[2]=="Crashed:":
             cur_thread=crash_line
             printed_thread_header=False
         elif len(parts)==2 and parts[0]=="Thread" and parts[1].endswith(":") and parts[1][:-1].isdigit():

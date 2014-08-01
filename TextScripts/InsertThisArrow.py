@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/python
 #XcodeMenuName: Insert this->
 import sys
 

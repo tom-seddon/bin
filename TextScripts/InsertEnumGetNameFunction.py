@@ -63,10 +63,12 @@ print "static const char *Get%sName(int value)"%enum_name
 print "{"
 print "    switch(value)"
 print "    {"
-print "    S_DEFAULT_NAME_CASE(%s,value)"%enum_name
+print "    default:"
+print "        return \"?%s?\";"%enum_name
 for value_name in value_names:
     if not value_name.lower().endswith("endvalue"):
-        print "    S_NAME_CASE(%s)"%value_name
+        print "    case %s:"%value_name
+        print "        return \"%s\";"%value_name
 print "    }"
 print "}"
 

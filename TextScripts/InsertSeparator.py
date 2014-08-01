@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/python
 #XcodeMenuName: Insert separator
 import sys,os
 

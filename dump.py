@@ -66,6 +66,7 @@ if __name__=="__main__":
                       dest="cols",
                       metavar="COLS",
                       default=16,
+                      type="int",
                       help="set number of columns to COLS (default %default)")
 
     options,args=parser.parse_args()
