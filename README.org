@@ -1,7 +1,7 @@
 * command line tools
 
-Various un(der)documented command line tools from my Mac OS X =bin=
-folder.
+Various un(der)documented command line tools from my =bin= folder.
+Most should work on Mac OS X and Windows, and probably Linux too.
 
 Most respond to =-h=.
 
@@ -105,12 +105,12 @@ XORed with 255; for ASCII text files (use =-a=), it does a rot47 on
 the 94 printable chars. (=-a= may not actually change anything, of
 course, if the file isn't really ASCII.)
 
-** p4changelist
+** p4changelist /(Windows only)/
 
 Prints contents of the specified Perforce changelist to stdout, one
 name per line. For use with =p4 -x -= or =foreach= (qv).
 
-** p4status
+** p4status /(Windows only)/
 
 Like p4 status, but much quicker, because it assumes read-only files
 haven't been edited. Can produce output in a format suitable for =p4
@@ -133,9 +133,9 @@ for the binaries. It never seems to do that on my system, so the
 script always fails. I believe you can use Xcode to do it, too. But I
 don't like perl, and I don't like Xcode.
 
-=symcrash= searches for dSYM files by file name, then looks through
-all the dSYMs found to find the one for the binary in question. This
-is much more reliable.
+=symcrash= uses spotlight to search for dSYM files by file name, which
+appears to be perfectly reliable, then looks through all the dSYMs
+found to find the one for the binary in question.
 
 (=symcrash= does not support as many different kinds of crash log
 types as Apple's perl script.)
