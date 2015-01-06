@@ -1,3 +1,4 @@
+#!env python
 import os,os.path,sys,tempfile,subprocess
 
 ##########################################################################
@@ -52,7 +53,15 @@ def main():
 
     #print elisp
 
-    argv=["C:\\emacs\\bin\\emacsclient.exe",
+    # hmm...
+    if sys.platform=="darwin":
+        emacsclient="/applications/emacs.app/contents/macos/bin/emacsclient"
+    elif sys.platform=="win32":
+        emacsclient="C:\\emacs\\bin\\emacsclient.exe"
+    else:
+        emacsclient="emacsclient"
+
+    argv=[emacsclient,
           "-n",
           "-e",
           " ".join(elisp)]
