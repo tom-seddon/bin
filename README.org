@@ -86,6 +86,13 @@ Makes a seamlessly-looping MP3 from a WAV file. Requires LAME
 
 For the principle, see [[http://www.compuphase.com/mp3/mp3loops.htm]].
 
+** mkhc
+
+Makes a pair of files, .h and .cpp/.c/.m/.mm, with some skeleton C++
+code in. Automatically generates sensible header guard defines and,
+when generating C++ .h files, some markup so emacs knows they're not
+C.
+
 ** mkpasswd
 
 Makes up a random password that can be copied from iTerm2 with one
