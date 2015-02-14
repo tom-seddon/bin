@@ -29,6 +29,23 @@ A version of the handy =*DUMP= command from the BBC Micro.
 
 Find duplicate files.
 
+** find_mp3_residue
+
+Find MP3 "residue" (a poor choice of terminology, sorry!) - the
+difference between the signal in the original WAV and the signal in
+the MP3.
+
+Specify the name of a .wav file. It will compress it to MP3 using
+various settings (both CBR and VBR), then for each set of settings it
+will produce a WAV that's the difference between that MP3 and the
+original WAV. The 128kbps one will probably be noisy; the 320kbps one
+will probably be very quiet.
+
+Inspired by: http://ryanmaguiremusic.com/theghostinthemp3.html
+
+Dependencies: GNU make, mpg123, lame, rm, flac (only needed if you use
+a flac file as input)
+
 ** foreach
 
 Reads a list of files on stdin, one per line, and executes a command
