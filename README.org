@@ -5,6 +5,10 @@ Most should work on Mac OS X and Windows, and probably Linux too.
 
 Most respond to =-h=.
 
+** change_ext
+
+Batch change of file extensions.
+
 ** count
 
 Counts occurrences of contents of lines on stdin, and prints the
