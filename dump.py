@@ -17,46 +17,57 @@ def main(options,
 
     out=sys.stdout
 
-    for file_name in file_names:
-        if len(file_names)>1:
-            out.write("\n** %s:\n\n"%file_name)
-        
-        f=open(file_name,
-               "rb")
+    try:
+        for file_name in file_names:
+            if len(file_names)>1:
+                out.write("\n** %s:\n\n"%file_name)
 
-        offset=0
+            with open(file_name,
+                      "rb") as f:
+                offset=0
 
-        while 1:
-            row=f.read(options.cols)
+                cols=range(options.cols)
 
-            if row=="":
-                break
+                while 1:
+                    row=f.read(options.cols)
 
-            out.write("%08X: "%offset)
+                    if row=="":
+                        break
 
-            for i in range(options.cols):
-                if i<len(row):
-                    out.write(" %02X"%ord(row[i]))
-                else:
-                    out.write("   ")
+                    line="%08X: %s  %s\n"%(offset,
+                                           " ".join(["%02X"%ord(row[i]) if i<len(row) else "  " for i in cols]),
+                                           "".join([(row[i] if ord(row[i])>=32 and ord(row[i])<=126 else ".") if i<len(row) else " " for i in cols]))
 
-            out.write("  ")
+                    # line="%08X: "%offset
 
-            for i in range(options.cols):
-                if i<len(row):
-                    if ord(row[i])>=32 and ord(row[i])<=126:
-                        out.write(row[i])
-                    else:
-                        out.write(".")
-                else:
-                    out.write(" ")
+                    # for i in range(options.cols):
+                    #     if i<len(row):
+                    #         line+=" %02X"%ord(row[i])
+                    #     else:
+                    #         line+="   "
 
-            out.write("\n")
+                    # line+="  "
 
-            offset+=options.cols
+                    # for i in range(options.cols):
+                    #     if i<len(row):
+                    #         if ord(row[i])>=32 and ord(row[i])<=126:
+                    #             line+=row[i]
+                    #         else:
+                    #             line+="."
+                    #     else:
+                    #         line+=" "
 
-        f.close()
-        
+                    # line+="\n"
+
+                    out.write(line)
+
+                    offset+=options.cols
+    except IOError,e:
+        if e.errno==32:
+            # Broken pipe. Just ignore this.
+            pass
+        else:
+            raise
 
 if __name__=="__main__":
     parser=optparse.OptionParser(usage="%prog [options] FILE(s)")
