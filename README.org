@@ -146,6 +146,14 @@ If using recentf, add the following to your =.emacs=:
 
 : (add-to-list 'recentf-exclude "pmacs\\.[0-9]+\\.dat$")
 
+** relocate_prg
+
+Converts an Atari ST GEMDOS format executable file (.PRG/.TOS/.TTP)
+into a memory image suitable for use by a disassembler. It loads the
+program in, relocates it, puts the zero-filled BSS in the right place,
+then saves the result. Have your disassembler start from the first
+byte (which is the usual =BRA *+$1E=).
+
 ** symcrash
 
 Symbolicates a crash log from the iPhone. Apple supply a perl script
