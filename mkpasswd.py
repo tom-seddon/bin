@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # -*- python-mode -*-
-import subprocess
+import uuid
 
-output=subprocess.check_output(["uuidgen"]).splitlines()[0].strip()
+output=str(uuid.uuid4())
 output=output.replace("-","")
 value=int(output,16)
 
