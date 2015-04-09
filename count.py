@@ -1,3 +1,4 @@
+#!env python
 import sys,argparse
 
 def count_lines(args,lines,f):
