@@ -5,6 +5,22 @@ Most should work on Mac OS X and Windows, and probably Linux too.
 
 Most respond to =-h=.
 
+** bin2cstr
+
+Convert a binary file into a list of C-style strings. You can paste
+the result into a Python or C program, copy it to a file and #include
+it into a C program, and so on.
+
+Specify -, to have a comma after each line of input, giving you an
+array of strings, one per line; specify -n - probably most useful in
+conjunction with -, - to leave the newlines out of the strings.
+
+** bin2hex
+
+Convert a binary file into comma-separate hex values. You can paste
+the result into a Python or C program, copy it to a file and #include it
+into a C program, and so on.
+
 ** change_ext
 
 Batch change of file extensions.
@@ -178,7 +194,7 @@ For emacs, use `M-x shell-command-on-region`.
 For Xcode 4.x, use my UserScripts fixin from
 [[https://github.com/davekeck/Xcode-4-Fixins]].
 
-For Visual Studio 2012, use my VSScripts addin from
+For Visual Studio 2012 and later, use my VSScripts addin from
 [[https://github.com/tom-seddon/VSScripts]].
 
 ** tma
