@@ -133,6 +133,12 @@ def main():
                       default=False,
                       help="if specified, no separating comment lines")
 
+    parser.add_option("-i",
+                      "--inl",
+                      action="store_true",
+                      default=False,
+                      help="if specified, generate empty .inl file next to header")
+
     options,args=parser.parse_args()
 
     if len(args)==0:
@@ -163,6 +169,7 @@ def main():
             define="__"+define+"__"
             
         h_name=arg+".h"
+        inl_name=arg+".inl"
 
         if options.c:
             cpp_name=arg+".c"
@@ -181,13 +188,17 @@ def main():
         h_name=os.path.join(h_path,
                             h_name)
 
+        inl_name=os.path.join(h_path,
+                              inl_name)
+
         cpp_name=os.path.join(cpp_path,
                               cpp_name)
 
         if not options.force:
             exists=0
-            for file in [h_name,
-                         cpp_name]:
+            files=[h_name,cpp_name]
+            if options.inl: files.append(inl_name)
+            for file in files:
                 if os.path.isfile(file):
                     print>>sys.stderr,"WARNING: not overwriting \"%s\""%file
                     exists=1
@@ -253,6 +264,11 @@ def main():
 
         f.write("#endif//"+define+"\n")
         f.close()
+
+        if options.inl:
+            with open(inl_name,"wt") as f:
+                print>>f
+                
 
         f=open(cpp_name,"wt")
 
