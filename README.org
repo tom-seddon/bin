@@ -130,6 +130,32 @@ code in. Automatically generates sensible header guard defines and,
 when generating C++ .h files, some markup so emacs knows they're not
 C.
 
+mkhc will look for a file =.mkhc= in the current folder. If it finds
+it, it will read additional command line options from it, one per
+line. For example:
+
+: header-folder=h/shared
+: src-folder=c
+: c
+: extern-c
+
+This is equivalent to running mkhc as follows:
+
+: mkhc --header-folder=h/shared --src-folder=c --c --extern-c
+
+Lines beginning with =#= are comments. You can add the special magic
+comment =#..= (no spaces) to have mkhc look in the parent folder for
+another =.mkhc=.
+
+When specifying paths in a =.mkhc=, specify them relative to the
+folder the =.mkhc= is in. (mkhc knows which options refer to paths,
+and will fix them up appropriately.)
+
+(Run =mkhc -v=, possibly with additional options, to show the options
+that will be used, including any =.mkhc= files read.)
+
+#+BEGIN_EX
+
 ** mkpasswd
 
 Makes up a random password that can be copied from iTerm2 with one

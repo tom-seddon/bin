@@ -1,308 +1,323 @@
 #!/usr/bin/python
-import sys,os.path,optparse,os,subprocess,uuid
+import sys,os.path,argparse,os,subprocess,uuid,collections
 
-def sep2(f):
-    f.write("//////////////////////////////////////////////////////////////////////////\n")
-    f.write("//////////////////////////////////////////////////////////////////////////\n")
+##########################################################################
+##########################################################################
 
-def get_paths(options):
-    if options.cwd:
-        return (".",
-                ".")
+g_verbose=False
 
-    last_path=None
-    cur_path=os.getcwd()
-    while cur_path!=last_path:
-        file_name=os.path.join(cur_path,
-                               ".mkhc")
-        if os.path.isfile(file_name):
-            f=open(file_name,
-                   "rt")
-            lines=[line.strip() for line in f.readlines()]
-            f.close()
-            del f
+def v(x):
+    if g_verbose:
+        sys.stdout.write(x)
+        sys.stdout.flush()
 
-            h_path="."
-            cpp_path="."
+##########################################################################
+##########################################################################
 
-            for line in lines:
-                parts=line.split("=",1)
-                if len(parts)==2:
-                    if parts[0]=="MKHC_H":
-                        h_path=parts[1]
-                    elif parts[0]=="MKHC_CPP":
-                        cpp_path=parts[1]
+def toggle_prefix(s,p):
+    if s.startswith(p): return s[len(p):]
+    else: return p+s
 
-            h_path=os.path.join(cur_path,
-                                h_path)
-            cpp_path=os.path.join(cur_path,
-                                  cpp_path)
-
-            print>>sys.stderr,"Settings from \"%s\":"%file_name
-            print>>sys.stderr,"    .cpp path: \"%s\""%cpp_path
-            print>>sys.stderr,"    .h path: \"%s\""%h_path
-
-            return (h_path,
-                    cpp_path)
-
-        last_path=cur_path
-        cur_path=os.path.normpath(os.path.join(cur_path,
-                                               ".."))
-        
-    h_path=os.getenv("MKHC_H")
-    if h_path is None:
-        h_path="."
-
-    cpp_path=os.getenv("MKHC_CPP")
-    if cpp_path is None:
-        cpp_path="."
-
-    return (h_path,
-            cpp_path)
-
-def main():
-    parser=optparse.OptionParser()
-
-    parser.add_option("-p",
-                      "--pch",
-                      action="store_true",
-                      help='include #include "pch.h" at the top of the .cpp file')
-
-    parser.add_option("-s",
-                      "--stdafx",
-                      action="store_true",
-                      help='include #include "stdafx.h" at the top of the .cpp file')
-
-    parser.add_option("-c",
-                      "--class",
-                      action="store_true",
-                      dest="_class",
-                      help="include C++ class skeleton")
-
-    parser.add_option("-n",
-                      "--noncopyable",
-                      action="store_true",
-                      help="C++ class skeleton (if present) is noncopyable")
-
-    parser.add_option("-f",
-                      "--force",
-                      action="store_true",
-                      help="overwrite existing files")
-
-    parser.add_option("-b",
-                      "--base",
-                      action="store",
-                      type="string",
-                      help="specify base class if generating a class skeleton.")
-
-    parser.add_option("--c",
-                      action="store_true",
-                      default=False,
-                      help="if specified, generate .c.")
-
-    parser.add_option("--m",
-                      action="store_true",
-                      default=False,
-                      help="if specified, generate .m.")
-
-    parser.add_option("--mm",
-                      action="store_true",
-                      default=False,
-                      help="if specified, generate .mm.")
+##########################################################################
+##########################################################################
     
-    parser.add_option("--extern-c",
-                      action="store_true",
-                      default=False,
-                      help="if specified, include extern \"C\" junk in header.")
+def get_switch_opts(so,lo):
+    args=[]
 
-    parser.add_option("-.",
-                      action="store_true",
-                      dest="cwd",
-                      default=False,
-                      help="if specified, always put files in .")
+    if so is not None: args.append("-"+so)
+    if lo is not None: args.append("--"+lo)
 
-    parser.add_option("-_",
-                      "--extra-underscores",
-                      action="store_true",
-                      default=False,
-                      help="if specified, extra underscores in header include guard (__THIS__ instead of THIS_)")
+    return args
 
-    parser.add_option("-N",
-                      "--no-separators",
-                      action="store_true",
-                      default=False,
-                      help="if specified, no separating comment lines")
+##########################################################################
+##########################################################################
 
-    parser.add_option("-i",
-                      "--inl",
-                      action="store_true",
-                      default=False,
-                      help="if specified, generate empty .inl file next to header")
+def get_option_name(o):
+    if o.lo is not None: return o.lo
+    if o.so is not None: return o.so
+    return "???"
 
-    options,args=parser.parse_args()
+##########################################################################
+##########################################################################
 
-    if len(args)==0:
-        parser.error("Must specify at least one output file")
+class FlagOption:
+    def __init__(self,so,lo,dest,help):
+        self.lo=lo
+        self.so=so
+        self.dest=dest
+        self.help=help
 
-    h_path,cpp_path=get_paths(options)
+    def add_argparse_options(self,parser):
+        parser.add_argument(*get_switch_opts(self.so,self.lo),dest=self.dest,action="store_true",help=self.help,default=False)
 
-    guard_prefix=os.getenv("MKHC_GUARD_PREFIX")
-    if guard_prefix is None:
-        guard_prefix=""
+        if self.lo is not None:
+            parser.add_argument("--"+toggle_prefix(self.lo,"no-"),
+                                dest=self.dest,
+                                action="store_false",
+                                default=False,
+                                help=toggle_prefix(self.help,"don't "))
 
-    for arg in args:
-        name=os.path.split(arg)[1]
+##########################################################################
+##########################################################################
 
-        define_str="header_"+str(uuid.uuid4()).replace("-","")
-        if define_str is None:
-            define_str=name+"_H"
+class StringOption:
+    def __init__(self,so,lo,dest,help,default=None):
+        self.so=so
+        self.lo=lo
+        self.dest=dest
+        self.help=help
+        self.default=default
 
-        define=""
-        for c in define_str.upper():
-            if c.isalpha() or c.isdigit():
-                define+=c
-            else:
-                define+="_"
+    def add_argparse_options(self,parser):
+        parser.add_argument(*get_switch_opts(self.so,self.lo),dest=self.dest,action="store",help=self.help,default=self.default)
 
-        define=guard_prefix+define
-        if options.extra_underscores:
-            define="__"+define+"__"
-            
-        h_name=arg+".h"
-        inl_name=arg+".inl"
+class PathOption(StringOption):
+    def __init__(self,so,lo,dest,help,default=None): StringOption.__init__(self,so,lo,dest,help,default)
+        
+##########################################################################
+##########################################################################
 
-        if options.c:
-            cpp_name=arg+".c"
-        elif options.m:
-            cpp_name=arg+".m"
-        elif options.mm:
-            cpp_name=arg+".mm"
+g_options=[
+    FlagOption("p","pch","pch",'include #include "pch.h" at the top of the .cpp file'),
+    FlagOption("s","stdafx","stdafx",'include #include "stdafx.h" at the top of the .cpp file'),
+    FlagOption("c","class","_class","include C++ class skeleton"),
+    FlagOption("n","noncopyable","noncopyable","generate C++ class skeleton that's noncopyable"),
+    FlagOption(None,"c","c","generate .c."),
+    FlagOption(None,"m","m","generate .m."),
+    FlagOption(None,"mm","mm","generate .mm."),
+    FlagOption(None,"extern-c","extern_c","include extern \"C\" junk in header."),
+    FlagOption(".",None,"cwd","always put files in ."),
+    FlagOption("_","extra-underscores","extra_underscores","extra underscores in header include guard (__THIS__ instead of THIS_)"),
+    FlagOption("N","no-separators","no_separators","don't add separating comment lines"),
+    FlagOption("i","inl","inl","generate empty .inl file next to header"),
+    FlagOption("k","knr","knr","produce K&R-style braces"),
+    StringOption("b","base","base","base class when generating a class skeleton"),
+    StringOption(None,"tab","tab","string to use as a tab (default is tab char)",default="\t"),
+    PathOption("t","template","template","file to read comment template from"),
+    PathOption(None,"header-folder","h_folder","folder to put header files in",default="."),
+    PathOption(None,"src-folder","src_folder","folder to put source files in",default="."),
+    PathOption(None,"MKHC_H","h_folder","folder to put header files in"),
+    PathOption(None,"MKHC_CPP","src_folder","folder to put source files in"),
+]
+
+##########################################################################
+##########################################################################
+
+def get_brace(options):
+    if options.knr: return " {"
+    else: return "\n{"
+
+##########################################################################
+##########################################################################
+
+def get_source_ext(options):
+    if options.c: return "c"
+    elif options.m: return "m"
+    elif options.mm: return "mm"
+    else: return "cpp"
+
+##########################################################################
+##########################################################################
+
+def copy_template_file(options,f):
+    if options.template is None: return
+
+    with open(options.template,"rt") as tf: lines=[x.strip() for x in tf.readlines()]
+
+    for line in lines: f.write("%s\n"%line)
+    f.write("\n")
+    
+##########################################################################
+##########################################################################
+
+def write_header_file(options,f,name):
+    define=("header_"+str(uuid.uuid4()).replace("-","")).upper()
+    brace=get_brace(options)
+
+    if options.c or options.m: emacs=""
+    else: emacs="// -*- mode:c++ -*-"
+
+    f.write("#ifndef %s%s\n"%(define,emacs))
+    f.write("#define %s\n"%define)
+    f.write("\n")
+
+    copy_template_file(options,f)
+
+    if options.extern_c:
+        f.write("#ifdef __cplusplus\n")
+        f.write("extern \"C\"%s\n"%brace)
+        f.write("#endif\n\n")
+
+    if options._class:
+        if options.base is None: f.write("class %s%s\n"%(name,brace))
         else:
-            cpp_name=arg+".cpp"
+            f.write("#include \"%s.h\"\n"%options.base)
+            f.write("\n")
+            f.write("class %s:\n"%name)
+            f.write("\tpublic %s\n"%options.base)
+            f.write("{\n");
 
-        if options.c or options.m:
-            emacs_mode_setting=""
-        else:
-            emacs_mode_setting="// -*- mode:c++ -*-"
+        f.write("public:\n")
+        f.write("%s%s();\n"%(options.tab,name))
+        f.write("%s~%s();\n"%(options.tab,name))
+        f.write("protected:\n")
+        f.write("private:\n")
 
-        h_name=os.path.join(h_path,
-                            h_name)
+        if options.noncopyable:
+            f.write("%s%s(const %s &);\n"%(options.tab,name,name))
+            f.write("%s%s &operator=(const %s &);\n"%(options.tab,name,name))
 
-        inl_name=os.path.join(h_path,
-                              inl_name)
+        f.write("};\n")
 
-        cpp_name=os.path.join(cpp_path,
-                              cpp_name)
+    if options.extern_c:
+        f.write("\n#ifdef __cplusplus\n")
+        f.write("}\n")
+        f.write("#endif\n")
 
-        if not options.force:
-            exists=0
-            files=[h_name,cpp_name]
-            if options.inl: files.append(inl_name)
-            for file in files:
-                if os.path.isfile(file):
-                    print>>sys.stderr,"WARNING: not overwriting \"%s\""%file
-                    exists=1
+    f.write("\n#endif\n")
 
-            if exists:
-                print>>sys.stderr,"WARNING: not creating from \"%s\""%arg
-                continue
+##########################################################################
+##########################################################################
 
-        f=open(h_name,"wt")
-        f.write("#ifndef "+define+" "+emacs_mode_setting+"\n")
-        f.write("#define "+define+"\n")
+def write_source_file(options,f,name):
+    brace=get_brace(options)
+
+    copy_template_file(options,f)
+    
+    if options.pch: f.write("#include \"pch.h\"\n")
+    elif options.stdafx: f.write("#include \"stdafx.h\"\n")
+
+    if not (options.pch and name.lower()=="pch"): f.write("#include \"%s.h\"\n"%name)
+
+    if options._class:
         f.write("\n")
 
-        if options.extern_c:
-            f.write("#ifdef __cplusplus\n")
-            f.write("extern \"C\"\n")
-            f.write("{\n")
-            f.write("#endif//__cplusplus\n")
-            f.write("\n")
+        f.write("%s::%s()%s\n}\n\n"%(name,name,brace))
+        f.write("%s::~%s()%s\n}\n"%(name,name,brace))
 
-        if options._class:
-            if not options.no_separators:
-                sep2(f)
-                f.write("\n")
+##########################################################################
+##########################################################################
+        
+def write_inl_file(options,f,name):
+    copy_template_file(options,f)
 
-            if options.base is None:
-                f.write("class %s\n"%name)
-            else:
-                f.write("#include \"%s.h\"\n"%options.base)
-                
-                f.write("\n")
+##########################################################################
+##########################################################################
 
-                if not options.no_separators:
-                    sep2(f)
-                    f.write("\n")
+def pretty_print_options(options):
+    max_width=0
+    for option in g_options: max_width=max(max_width,len(get_option_name(option)))
+
+    v("Settings:\n")
+    attrs_seen=set()
+    for option in g_options:
+        if option.dest in attrs_seen: continue
+
+        attrs_seen.add(option.dest)
+        x=getattr(options,option.dest)
+        
+        v("    %-*s: %s\n"%(max_width,get_option_name(option),x))
+
+##########################################################################
+##########################################################################
+
+class Output: pass
+
+def main(options):
+    global g_verbose ; g_verbose=options.verbose
+
+    # Knobble a couple of things.
+    if options.cwd:
+        options.h_folder="."
+        options.src_folder="."
     
-                f.write("class %s:\n"%name)
-                f.write("\tpublic %s\n"%options.base)
-            
-            f.write("{\n");
-            f.write("public:\n");
-            f.write("\t%s();\n"%name)
-            f.write("\t~%s();\n"%name)
-            f.write("protected:\n");
-            f.write("private:\n");
+    pretty_print_options(options)
 
-            if options.noncopyable:
-                f.write("\t%s(const %s &);\n"%(name,name))
-                f.write("\t%s &operator=(const %s &);\n"%(name,name))
-            
-            f.write("};\n");
-            f.write("\n");
+    good=True
+    outputs=[]
+    for name in options.names:
+        o=Output()
 
-            if not options.no_separators:
-                sep2(f)
-                f.write("\n")
+        o.name=name
+        
+        o.h=os.path.join(options.h_folder,"%s.h"%name)
 
-        if options.extern_c:
-            f.write("#ifdef __cplusplus\n")
-            f.write("}\n")
-            f.write("#endif//__cplusplus\n")
-            f.write("\n")
+        if options.inl: o.inl=os.path.join(options.h_folder,"%s.inl"%name)
+        else: o.inl=None
 
-        f.write("#endif//"+define+"\n")
-        f.close()
+        o.src=os.path.join(options.src_folder,"%s.%s"%(name,get_source_ext(options)))
+        
+        if not options.force:
+            for fname in [o.h,o.inl,o.src]:
+                if fname is None: continue
+                if os.path.isfile(fname):
+                    print>>sys.stderr,"FATAL: file exists: %s"%fname
+                    good=False
 
-        if options.inl:
-            with open(inl_name,"wt") as f:
-                print>>f
+        outputs.append(o)
+
+    if not good: sys.exit(1)
+
+    for output in outputs:
+        if output.h is not None:
+            with open(output.h,"wt") as f: write_header_file(options,f,output.name)
+
+        if output.inl is not None:
+            with open(output.inl,"wt") as f: write_inl_file(options,f,output.name)
+
+        if output.src is not None:
+            with open(output.src,"wt") as f: write_source_file(options,f,output.name)
+
+##########################################################################
+##########################################################################
+
+def read_mkhc_args(args):
+    path="."
+    while True:
+        mkhc_fname=os.path.join(path,".mkhc")
+        if not os.path.isfile(mkhc_fname): break
+
+        parent=False
+        with open(mkhc_fname,"rt") as f:
+            for x in f.readlines():
+                x=x.strip()
+                if x.startswith("#"):
+                    # comment
+                    if x=="#..": parent=True
+                    continue
+
+                # munge file name, if necessary
+                parts=x.split("=",1)
+                if len(parts)==2:
+                    for option in g_options:
+                        if not isinstance(option,PathOption): continue
+                        if parts[0]==option.lo:
+                            parts[1]=os.path.join(path,parts[1])
+                            break
                 
+                    args.append("--%s=%s"%(parts[0],parts[1]))
+                else:
+                    args.append("--%s"%parts[0])
 
-        f=open(cpp_name,"wt")
+        if not parent: break
 
-        if options.pch:
-            f.write("#include \"pch.h\"\n")
-        elif options.stdafx:
-            f.write("#include \"stdafx.h\"\n")
+        path=path+"/.."
 
-        if not (options.pch and name.lower()=="pch"):
-            f.write("#include \""+name+".h\"\n")
-
-        if options._class:
-            f.write("\n")
-            
-            if not options.no_separators:
-                sep2(f)
-                f.write("\n")
-            
-            f.write("%s::%s()\n{\n}\n"%(name,name))
-
-            f.write("\n")
-            
-            if not options.no_separators:
-                sep2(f)
-                f.write("\n")
-            
-            f.write("%s::~%s()\n{\n}\n"%(name,name))
-            
-            f.write("\n")
-
-            if not options.no_separators:
-                sep2(f)
-            
-        f.close()
-
+##########################################################################
+##########################################################################
+    
 if __name__=="__main__":
-    main()
+    parser=argparse.ArgumentParser()
+
+    for option in g_options: option.add_argparse_options(parser)
+
+    parser.add_argument("-v","--verbose",action="store_true",default=False,help="extra verbosity")
+    parser.add_argument("names",metavar="NAME",nargs="*",help="name of files/classes to generate")
+    parser.add_argument("-f","--force",action="store_true",default=False,
+                        help="overwrite existing files")
+
+    args=sys.argv[1:]
+
+    read_mkhc_args(args)
+
+    main(parser.parse_args(args))
