@@ -152,9 +152,7 @@ folder the =.mkhc= is in. (mkhc knows which options refer to paths,
 and will fix them up appropriately.)
 
 (Run =mkhc -v=, possibly with additional options, to show the options
-that will be used, including any =.mkhc= files read.)
-
-#+BEGIN_EX
+that will be used, taking into account any =.mkhc= files read.)
 
 ** mkpasswd
 
@@ -223,7 +221,7 @@ For Xcode 4.x, use my UserScripts fixin from
 For Visual Studio 2012 and later, use my VSScripts addin from
 [[https://github.com/tom-seddon/VSScripts]].
 
-** tma
+** tma /(OS X only?/)
 
 Analyze Time Machine backups. There are various options, but just run
 it like this, from your Time Machine backups folder:
