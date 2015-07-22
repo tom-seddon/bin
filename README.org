@@ -177,6 +177,15 @@ Like p4 status, but much quicker, because it assumes read-only files
 haven't been edited. Can produce output in a format suitable for =p4
 -x -= or =foreach= (qv).
 
+** picsplit
+
+Splits an image into equally-sized tiles, possibly after removing
+border regions based on alpha channel. The tiles can optionally be
+generated overlapping, to avoid gaps due to transformation
+inaccuracies.
+
+Dependencies: PIL
+
 ** pmacs
 
 Sends stdin to emacs via =emacsclient=, so you can use emacs as the
