@@ -1,3 +1,14 @@
+##########################################################################
+##########################################################################
+
+# this (otherwise unnecessary) import fixes problems locating
+# pywintypes with anaconda. see
+# https://github.com/ContinuumIO/anaconda-issues/issues/37#issuecomment-109201314
+import win32com.client
+
+##########################################################################
+##########################################################################
+
 import sys,argparse,os,subprocess,pywintypes
 
 got_win32console=True
