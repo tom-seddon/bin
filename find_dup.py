@@ -39,20 +39,21 @@ def main(options):
     filekeys_by_size={}
 
     # retrieve everything
-    for dir_path,dir_names,file_names in os.walk(options.dir):
-        v("    Looking in \"%s\"...\n"%dir_path)
-        for file_name in file_names:
-            full_name=os.path.join(dir_path,file_name)
+    for dir in options.dirs:
+        for dir_path,dir_names,file_names in os.walk(dir):
+            v("    Looking in \"%s\"...\n"%dir_path)
+            for file_name in file_names:
+                full_name=os.path.join(dir_path,file_name)
 
-            s=os.lstat(full_name)
+                s=os.lstat(full_name)
 
-            if stat.S_ISLNK(s.st_mode):
-                pass
-            else:
-                filekey=(s.st_dev,s.st_ino)
+                if stat.S_ISLNK(s.st_mode):
+                    pass
+                else:
+                    filekey=(s.st_dev,s.st_ino)
 
-                files_by_filekey.setdefault(filekey,[]).append(full_name)
-                filekeys_by_size.setdefault(s.st_size,[]).append(filekey)
+                    files_by_filekey.setdefault(filekey,[]).append(full_name)
+                    filekeys_by_size.setdefault(s.st_size,[]).append(filekey)
 
     # remove anything uninteresting...
     for size,filekeys in filekeys_by_size.items():
@@ -137,12 +138,6 @@ if __name__=="__main__":
     parser=argparse.ArgumentParser(fromfile_prefix_chars="@",
                                    description="Find duplicate files.")
 
-    parser.add_argument("-d",
-                        "--dir",
-                        default=".",
-                        metavar="DIR",
-                        help="""Read files from %(metavar)s. (Default %(metavar)s: \"%(default)s\".)""")
-
     parser.add_argument("-l",
                         "--less-than",
                         default=262144,
@@ -156,6 +151,11 @@ if __name__=="__main__":
                         action="store_true",
                         default=False,
                         help="""If specified, verbosity.""")
+
+    parser.add_argument("dirs",
+                        metavar="DIR",
+                        nargs="+",
+                        help="""read files from %(metavar)s.""")
 
     main(parser.parse_args())
     
