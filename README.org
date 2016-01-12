@@ -15,11 +15,14 @@ Specify -, to have a comma after each line of input, giving you an
 array of strings, one per line; specify -n - probably most useful in
 conjunction with -, - to leave the newlines out of the strings.
 
+List files to process on the command line, or specify no files to have
+it read stdin.
+
 ** bin2hex
 
-Convert a binary file into comma-separate hex values. You can paste
-the result into a Python or C program, copy it to a file and #include it
-into a C program, and so on.
+Convert a binary file into comma-separated hex values. You can paste
+the result into a Python or C program, copy it to a file and #include
+it into a C program, and so on.
 
 ** change_ext
 

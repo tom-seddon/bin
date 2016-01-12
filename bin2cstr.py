@@ -26,67 +26,68 @@ escapes={
 
 max_num_line_chars=500
 
+def do_file(f,out):
+    num_line_chars=None
+    last_c=None
+    cont=0
+
+    if options.comma:
+        line_end="\",\n"
+    else:
+        line_end="\"\n"
+
+    data=f.read()
+        
+    for c in data:
+        if num_line_chars>=max_num_line_chars:
+            out.write("\"//...\n")
+            cont=1
+            num_line_chars=None
+        elif (c!="\n" and c!="\r") and (last_c=="\n" or last_c=="\r"):
+            out.write(line_end)
+            num_line_chars=None
+
+        if num_line_chars is None:
+            if cont:
+                out.write("    ")
+                cont=0
+
+            out.write("\"")
+            num_line_chars=0
+
+        if escapes.has_key(c):
+            do_print=1
+            if options.no_newlines:
+                if c=="\n" or c=="\r":
+                    do_print=0
+
+            if do_print:
+                out.write(escapes[c])
+                num_line_chars+=1
+
+        elif ord(c)>=32 and ord(c)<=127:
+            out.write(c)
+            num_line_chars+=1
+        else:
+            out.write("\\x%02X".format(ord(c)))
+            num_line_chars+=1
+
+        last_c=c
+
+        if (c=="\n" or c=="\r") and (last_c=="\n" or last_c=="\r") and last_c!=c:
+            out.write(line_end)
+            num_line_chars=None
+
+    if num_line_chars is not None:
+        out.write(line_end)
+        
 def main(args,
          options,
          out):
-    for arg in args:
-        f=open(arg,
-               "rb")
-        data=f.read()
-        f.close()
-
-        num_line_chars=None
-        last_c=None
-        cont=0
-
-        if options.comma:
-            line_end="\",\n"
-        else:
-            line_end="\"\n"
-
-        for c in data:
-            if num_line_chars>=max_num_line_chars:
-                out.write("\"//...\n")
-                cont=1
-                num_line_chars=None
-            elif (c!="\n" and c!="\r") and (last_c=="\n" or last_c=="\r"):
-                out.write(line_end)
-                num_line_chars=None
-
-            if num_line_chars is None:
-                if cont:
-                    out.write("    ")
-                    cont=0
-                    
-                out.write("\"")
-                num_line_chars=0
-
-            if escapes.has_key(c):
-                do_print=1
-                if options.no_newlines:
-                    if c=="\n" or c=="\r":
-                        do_print=0
-
-                if do_print:
-                    out.write(escapes[c])
-                    num_line_chars+=1
-                    
-            elif ord(c)>=32 and ord(c)<=127:
-                out.write(c)
-                num_line_chars+=1
-            else:
-                out.write("\\x%02X".format(ord(c)))
-                num_line_chars+=1
-
-            last_c=c
-
-            if (c=="\n" or c=="\r") and (last_c=="\n" or last_c=="\r") and last_c!=c:
-                out.write(line_end)
-                num_line_chars=None
-
-        if num_line_chars is not None:
-            out.write(line_end)
-                
+    if len(args)==0: do_file(sys.stdin,out)
+    else:
+        for arg in args:
+            with open(arg,"rb") as f: do_file(f,out)
 
 ##########################################################################
 ##########################################################################
@@ -102,7 +103,7 @@ if __name__=="__main__":
     parser.add_option("-n",
                       "--no-newlines",
                       action="store_true",
-                      help="if specified, don't include newline chars. (Strings will still be broken strings and ','s still inserted.)")
+                      help="if specified, don't include newline chars in output. (Strings will still be broken at input newlines)")
 
     parser.set_defaults(comma=0,
                         no_newlines=0)
