@@ -206,6 +206,10 @@ program in, relocates it, puts the zero-filled BSS in the right place,
 then saves the result. Have your disassembler start from the first
 byte (which is the usual =BRA *+$1E=).
 
+** svnsync_remote /(OS X/Unix only)/
+
+Does an =svnsync= from a remote repo.
+
 ** symcrash
 
 Symbolicates a crash log from the iPhone. Apple supply a perl script
