@@ -275,33 +275,42 @@ def read_mkhc_args(args):
     path="."
     while True:
         mkhc_fname=os.path.join(path,".mkhc")
-        if not os.path.isfile(mkhc_fname): break
+        if os.path.isfile(mkhc_fname):
+            parent=False
+            with open(mkhc_fname,"rt") as f:
+                for x in f.readlines():
+                    x=x.strip()
+                    if x.startswith("#"):
+                        # comment
+                        if x=="#..": parent=True
+                        continue
 
-        parent=False
-        with open(mkhc_fname,"rt") as f:
-            for x in f.readlines():
-                x=x.strip()
-                if x.startswith("#"):
-                    # comment
-                    if x=="#..": parent=True
-                    continue
+                    # munge file name, if necessary
+                    parts=x.split("=",1)
+                    if len(parts)==2:
+                        for option in g_options:
+                            if not isinstance(option,PathOption): continue
+                            if parts[0]==option.lo:
+                                parts[1]=os.path.join(path,parts[1])
+                                break
 
-                # munge file name, if necessary
-                parts=x.split("=",1)
-                if len(parts)==2:
-                    for option in g_options:
-                        if not isinstance(option,PathOption): continue
-                        if parts[0]==option.lo:
-                            parts[1]=os.path.join(path,parts[1])
-                            break
-                
-                    args.append("--%s=%s"%(parts[0],parts[1]))
-                else:
-                    args.append("--%s"%parts[0])
+                        args.append("--%s=%s"%(parts[0],parts[1]))
+                    else:
+                        args.append("--%s"%parts[0])
 
-        if not parent: break
+            if not parent: break
 
-        path=path+"/.."
+        next_path=path+"/.."
+        if os.name=="nt":
+            if os.path.normpath(os.path.abspath(path))==os.path.normpath(os.path.abspath(next_path)):
+                # hit root folder...
+                break
+        else:
+            if os.path.samefile(path,next_path):
+                # hit root folder...
+                break
+        
+        path=next_path
 
 ##########################################################################
 ##########################################################################
