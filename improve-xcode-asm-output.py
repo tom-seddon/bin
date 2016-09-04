@@ -1,70 +1,76 @@
 #!/usr/bin/python
 import re,sys,os,os.path
 
-file_re=re.compile(r'^(?P<indent>\s*)\.file\s+(?P<num>[0-9]+)\s+"(?P<file_name>[^"]*)"')
+ignore_re=re.compile(r'^(Ltmp|Lfunc_|LPC|\s*(#|@|\.cfi_|\.align|\.code|\.thumb_func))')
+section_re=re.compile(r'^\s*\.section\s+(?P<attrs>.*)$')
+file2_re=re.compile(r'^(?P<indent>\s*)\.file\s+(?P<num>[0-9]+)\s+"(?P<base_name>[^"]*)"\s+"(?P<file_name>[^"]*)"')
+file1_re=re.compile(r'^(?P<indent>\s*)\.file\s+(?P<num>[0-9]+)\s+"(?P<file_name>[^"]*)"')
 loc_re=re.compile(r'^(?P<indent>\s*)\.loc\s+(?P<num>[0-9]+)\s+(?P<line>[0-9]+)\s+(?P<col>[0-9]+)')
-asciz_re=re.compile(r'^\s*\.asciz\s+"(?P<str>[^"]*)"')
 
-lines=[line.rstrip() for line in sys.stdin.readlines()]
-
-# find path (this is just a big dirty hack)
-path=""
-ascizs=[]
-for line in lines:
-    m=asciz_re.match(line)
-    if m is not None:
-        ascizs.append(m.group("str"))
-
-for i in range(len(ascizs)):
-    if ascizs[i].lower().startswith("apple clang"):
-        if i+2<len(ascizs):
-            path=ascizs[i+2]
-            break
-        
 files={}
+curSourceLine = None
+inCodeSection = False
 
-for line in lines:
+def add_file(num,base_name,file_name):
+    assert not files.has_key(num)
+
+    if not os.path.isabs(file_name) and base_name is not None:
+        file_name=os.path.normpath(os.path.join(base_name, file_name))
+            
+    f=open(file_name,"rt")
+        
+    files[num]=(file_name,[ln.rstrip() for ln in f.readlines()])
+        
+    f.close()
+    del f
+    print "%d: %s (%d lines)"%(num,m.group("file_name"),len(files[num]))
+
+for line in sys.stdin.readlines():
     line=line.rstrip()
-    m=file_re.match(line)
 
     extra=[]
+    
+    if ignore_re.match(line) is not None:
+        # Ignore comments, noise labels, and unimportant directives
+        continue
 
+    # Watch ".section" directives and skip sections that don't contain instructions:
+    m=section_re.match(line)
     if m is not None:
-        num=int(m.group("num"))
-        assert not files.has_key(num)
+        attrs = m.group("attrs").split(",")
+        inCodeSection = attrs[0] == "__TEXT" and attrs[1] == "__text"
+        continue
+    if not inCodeSection:
+        continue
 
-        file_name=m.group("file_name")
-        if not os.path.isabs(file_name):
-            file_name=os.path.normpath(os.path.join(path,
-                                                    file_name))
-            
-        f=open(file_name,
-               "rt")
+    m=file2_re.match(line)
+    if m is not None:
+        add_file(int(m.group("num")),m.group("base_name"),m.group("file_name"))
+        continue
+
+    m=file1_re.match(line)
+    if m is not None:
+        add_file(int(m.group("num")),None,m.group("file_name"))
+        continue
         
-        files[num]=(file_name,
-                    [line.rstrip() for line in f.readlines()])
+    m=loc_re.match(line)
+    if m is not None:
+        # Display a source line:
+        file_num=int(m.group("num"))
+        line_num=int(m.group("line"))
+        col_num=int(m.group("col"))
         
-        f.close()
-        del f
-
-        #print "%d: %s (%d lines)"%(num,m.group("file_name"),len(files[num]))
-    else:
-        m=loc_re.match(line)
-        if m is not None:
-            file_num=int(m.group("num"))
-            line_num=int(m.group("line"))
-            col_num=int(m.group("col"))
-
+        if curSourceLine != (file_num, line_num):
+            curSourceLine = (file_num, line_num)
             if files.has_key(file_num):
                 if line_num>=1 and line_num<=len(files[file_num][1]):
                     extra.append("")
-                    extra.append("%s:%d: %s"%(os.path.basename(files[file_num][0]),
-                                              line_num,
-                                              files[file_num][1][line_num-1].lstrip()))
+                    extra.append("%-60s//%s:%d"%(files[file_num][1][line_num-1].lstrip(),
+                                                  os.path.basename(files[file_num][0]),
+                                                  line_num))
                     extra.append("")
-
-            line=None
-
+        line=None
+    
     if line is not None:
         print line
 
