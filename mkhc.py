@@ -98,6 +98,7 @@ g_options=[
     PathOption(None,"src-folder","src_folder","folder to put source files in",default="."),
     PathOption(None,"MKHC_H","h_folder","folder to put header files in"),
     PathOption(None,"MKHC_CPP","src_folder","folder to put source files in"),
+    FlagOption(None,"pragma-once","pragma_once","use #pragma once rather than header guards"),
 ]
 
 ##########################################################################
@@ -137,8 +138,12 @@ def write_header_file(options,f,name):
     if options.c or options.m: emacs=""
     else: emacs="// -*- mode:c++ -*-"
 
-    f.write("#ifndef %s%s\n"%(define,emacs))
-    f.write("#define %s\n"%define)
+    if options.pragma_once:
+        f.write("#pragma once\n")
+    else:
+        f.write("#ifndef %s%s\n"%(define,emacs))
+        f.write("#define %s\n"%define)
+        
     f.write("\n")
 
     copy_template_file(options,f)
@@ -174,7 +179,8 @@ def write_header_file(options,f,name):
         f.write("}\n")
         f.write("#endif\n")
 
-    f.write("\n#endif\n")
+    if not options.pragma_once:
+        f.write("\n#endif\n")
 
 ##########################################################################
 ##########################################################################
