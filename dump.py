@@ -65,10 +65,25 @@ def main(options,
             else:
                 with open(file_name,"rb") as f:
                     dump(f)
+
     except IOError,e:
-        if e.errno==32:
+        if e.errno==32 or e.errno==22:
             # Broken pipe. Just ignore this.
-            pass
+            #
+            # Close stdout and stderr so that the Python C code
+            # doesn't pop up a message when it tries to close them
+            # itself later. See, e.g., http://stackoverflow.com/questions/12790328/
+            #
+            # This prevents problems with stuff like "dump XXX | head -n 5"
+            try:
+                sys.stdout.close()
+            except:
+                pass
+
+            try:
+                sys.stderr.close()
+            except:
+                pass
         else:
             raise
 
