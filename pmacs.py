@@ -61,6 +61,8 @@ def main():
     else:
         emacsclient="emacsclient"
 
+    sys.stderr.write("saved %d byte(s) to %s\n"%(len(data),temp_fname))
+
     argv=[emacsclient,
           "-n",
           "-e",
@@ -68,7 +70,7 @@ def main():
     #print argv
     r=subprocess.call(argv)
 
-    print "%d - %d byte(s) - %s"%(r,len(data),temp_fname)
+    sys.stderr.write("emacsclient: %d\n"%r)
 
 ##########################################################################
 ##########################################################################

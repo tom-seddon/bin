@@ -86,7 +86,7 @@ g_options=[
     FlagOption(None,"m","m","generate .m."),
     FlagOption(None,"mm","mm","generate .mm."),
     FlagOption(None,"extern-c","extern_c","include extern \"C\" junk in header."),
-    FlagOption(".",None,"cwd","always put files in ."),
+    FlagOption(".",".","cwd","always put files in ."),
     FlagOption("_","extra-underscores","extra_underscores","extra underscores in header include guard (__THIS__ instead of THIS_)"),
     FlagOption("N","no-separators","no_separators","don't add separating comment lines"),
     FlagOption("i","inl","inl","generate empty .inl file next to header"),
@@ -277,12 +277,14 @@ def main(options):
 ##########################################################################
 ##########################################################################
 
-def read_mkhc_args(args):
+def read_mkhc_args():
+    mkhc_args=[]
     path="."
     while True:
         mkhc_fname=os.path.join(path,".mkhc")
         if os.path.isfile(mkhc_fname):
             parent=False
+            args=[]
             with open(mkhc_fname,"rt") as f:
                 for x in f.readlines():
                     x=x.strip()
@@ -304,6 +306,10 @@ def read_mkhc_args(args):
                     else:
                         args.append("--%s"%parts[0])
 
+            # .mkhc files in lower folders take priority - i.e., in
+            # reverse order.
+            mkhc_args=args+mkhc_args
+
             if not parent: break
 
         next_path=path+"/.."
@@ -317,6 +323,8 @@ def read_mkhc_args(args):
                 break
         
         path=next_path
+
+    return mkhc_args
 
 ##########################################################################
 ##########################################################################
@@ -333,6 +341,6 @@ if __name__=="__main__":
 
     args=sys.argv[1:]
 
-    read_mkhc_args(args)
+    args+=read_mkhc_args()
 
     main(parser.parse_args(args))
