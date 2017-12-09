@@ -36,7 +36,7 @@ Batch change of file extensions.
 Batch convert WAVs and FLACs to MP3s. Useful for devices that have
 limited storage, don't support FLAC, etc.
 
-(lame is run with `--preset insane`, so 320Kbps output. This is
+(lame is run with =--preset insane=, so 320Kbps output. This is
 compatible with all the playback devices I use.)
 
 Dependencies: lame, flac tools (if converting FLACs), GNU make
