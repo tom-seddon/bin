@@ -14,7 +14,7 @@ Convert a binary file into a list of C-style strings. You can paste
 the result into a Python or C program, copy it to a file and #include
 it into a C program, and so on.
 
-Specify =-,= to have a comma after each line of input, giving you an
+Specify ~-,~ to have a comma after each line of input, giving you an
 array of strings, one per line; specify =-n= - probably most useful in
 conjunction with =-,= - to leave the newlines out of the strings.
 
