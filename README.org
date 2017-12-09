@@ -5,15 +5,18 @@ Most should work on Mac OS X and Windows, and probably Linux too.
 
 Most respond to =-h=.
 
+Anything Xcode- or iOS-related may suffer from bitrot or be now
+irrelevant...
+
 ** bin2cstr
 
 Convert a binary file into a list of C-style strings. You can paste
 the result into a Python or C program, copy it to a file and #include
 it into a C program, and so on.
 
-Specify -, to have a comma after each line of input, giving you an
-array of strings, one per line; specify -n - probably most useful in
-conjunction with -, - to leave the newlines out of the strings.
+Specify =-,= to have a comma after each line of input, giving you an
+array of strings, one per line; specify =-n= - probably most useful in
+conjunction with =-,= - to leave the newlines out of the strings.
 
 List files to process on the command line, or specify no files to have
 it read stdin.
@@ -27,6 +30,16 @@ it into a C program, and so on.
 ** change_ext
 
 Batch change of file extensions.
+
+** compress_wavs
+
+Batch convert WAVs and FLACs to MP3s. Useful for devices that have
+limited storage, don't support FLAC, etc.
+
+(lame is run with `--preset insane`, so 320Kbps output. This is
+compatible with all the playback devices I use.)
+
+Dependencies: lame, flac tools (if converting FLACs), GNU make
 
 ** count
 
@@ -235,7 +248,7 @@ types as Apple's perl script.)
 
 Various text-processing scripts for use with a text editor.
 
-For emacs, use `M-x shell-command-on-region`.
+For emacs, use =M-x shell-command-on-region=.
 
 For Xcode 4.x, use my UserScripts fixin from
 [[https://github.com/davekeck/Xcode-4-Fixins]].
