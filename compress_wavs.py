@@ -157,8 +157,8 @@ def main(options):
 
             f.write("\n")
 
-        make_command="make -j%d -f %s all"%(options.ncpu,
-                                            shescape(temp_dir.get_file_path("Makefile")))
+        make_command=options.make+" -j%d -f %s all"%(options.ncpu,
+                                                     shescape(temp_dir.get_file_path("Makefile")))
         
         v("%s\n"%make_command)
 
@@ -170,6 +170,12 @@ def main(options):
 if __name__=="__main__":
     parser=argparse.ArgumentParser(description="bulk convert WAVs/FLACs to MP3")
 
+    parser.add_argument("-m",
+                        "--make",
+                        metavar="MAKE",
+                        default="make",
+                        help="use %(metavar)s to invoke GNU Make (default: %(default)s)")
+                        
     parser.add_argument("-v",
                         "--verbose",
                         action="store_true",
