@@ -1,6 +1,14 @@
-import sys,argparse,os,subprocess,fnmatch,win32api,win32file,marshal,tempfile
+import sys,argparse,os,subprocess,fnmatch,marshal,tempfile,glob,stat
 emacs=os.getenv("EMACS") is not None
 
+got_win32api=False
+try:
+    import win32api,win32file
+    got_win32api=True
+except ImportError:
+    print>>sys.stderr,'NOTE: win32api module not found - this may affect performance. (install pywin32 to get win32api)'
+
+    
 ##########################################################################
 ##########################################################################
 
@@ -26,17 +34,26 @@ def print_file_names(options,prefix,fnames):
 ##########################################################################
 ##########################################################################
 
-def add_files_in_folder(files,folder,clear_flags):
-    datas=win32api.FindFiles(os.path.join(folder,"*"))
-    for data in datas:
-        if (data[0]&win32file.FILE_ATTRIBUTE_DIRECTORY)==0:
-            if (data[0]&clear_flags)==0:
-                files.add(os.path.join(folder,data[8]))
+def add_files_in_folder(files,folder,only_ro):
+    if got_win32api:
+        datas=win32api.FindFiles(os.path.join(folder,"*"))
+        for data in datas:
+            if (data[0]&win32file.FILE_ATTRIBUTE_DIRECTORY)==0:
+                if (data[0]&clear_flags)==0:
+                    files.add(os.path.join(folder,data[8]))
 
-    for data in datas:
-        if data[0]&win32file.FILE_ATTRIBUTE_DIRECTORY:
-            if data[8]!="." and data[8]!="..":
-                add_files_in_folder(files,os.path.join(folder,data[8]),clear_flags)
+        for data in datas:
+            if data[0]&win32file.FILE_ATTRIBUTE_DIRECTORY:
+                if data[8]!="." and data[8]!="..":
+                    add_files_in_folder(files,os.path.join(folder,data[8]),only_ro)
+    else:
+        for dirpath,dirnames,filenames in os.walk(folder):
+            for name in filenames:
+                name=os.path.join(dirpath,name)
+                if only_ro:
+                    st=os.stat(name)
+                    if (st.st_mode&stat.S_IWUSR)==0: continue
+                files.add(name)
 
 ##########################################################################
 ##########################################################################
@@ -81,7 +98,7 @@ def main(options):
         v("finding files...\n")
         all_files=set()
         for folder in options.folders:
-            add_files_in_folder(all_files,folder,0)
+            add_files_in_folder(all_files,folder,False)
 
         v("    (found %d files.)\n"%len(all_files))
 
@@ -95,7 +112,7 @@ def main(options):
     if options.edited:
         rw_files=set()
         for folder in options.folders:
-            add_files_in_folder(rw_files,folder,win32file.FILE_ATTRIBUTE_READONLY)
+            add_files_in_folder(rw_files,folder,True)
 
         edits=run_p4_and_get_all_lines(["p4.exe","-x","-","diff","-se"],rw_files)
 
