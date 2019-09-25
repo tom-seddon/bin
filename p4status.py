@@ -51,7 +51,15 @@ def add_files_in_folder(files,folder,only_ro):
             for name in filenames:
                 name=os.path.join(dirpath,name)
                 if only_ro:
-                    st=os.stat(name)
+                    try: st=os.stat(name)
+                    except WindowsError as e:
+                        if e.winerror==123:
+                            # "The filename, directory name, or volume
+                            # label syntax is incorrect" - probably a
+                            # malformed file name.
+                            print>>sys.stderr,'WARNING: ignoring file with invalid name: %s'%name
+                            continue
+                        else: raise
                     if (st.st_mode&stat.S_IWUSR)==0: continue
                 files.add(name)
 
