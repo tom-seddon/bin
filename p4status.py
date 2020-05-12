@@ -71,7 +71,9 @@ def run_p4_and_get_all_lines(p4_args,files):
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
-    output=process.communicate("\n".join(files))
+    files_list="\n".join(files)
+    v('files data = %d byte(s)\n'%(len(files_list)))
+    output=process.communicate(files_list)
     return output[0].splitlines()
     
 def run_p4_and_get_prefixed_lines(p4_args,files,prefix):
@@ -111,10 +113,10 @@ def main(options):
         v("    (found %d files.)\n"%len(all_files))
 
         v("getting depot adds...\n")
-        depot_adds=run_p4_and_get_prefixed_lines(["p4.exe","-x","-","-e","reconcile","-a","-n"],all_files,"... depotFile ")
+        depot_adds=run_p4_and_get_prefixed_lines(["p4.exe","-b","131072","-x","-","-e","reconcile","-a","-n"],all_files,"... depotFile ")
 
         v("getting local paths...\n")
-        adds=run_p4_and_get_prefixed_lines(["p4.exe","-x","-","-e","where"],depot_adds,"... localPath ")
+        adds=run_p4_and_get_prefixed_lines(["p4.exe","-b","131072","-x","-","-e","where"],depot_adds,"... localPath ")
 
     edits=set()
     if options.edited:
@@ -122,11 +124,11 @@ def main(options):
         for folder in options.folders:
             add_files_in_folder(rw_files,folder,True)
 
-        edits=run_p4_and_get_all_lines(["p4.exe","-x","-","diff","-se"],rw_files)
+        edits=run_p4_and_get_all_lines(["p4.exe","-b","131072","-x","-","diff","-se"],rw_files)
 
     deletes=set()
     if options.deleted:
-        deletes=run_p4_and_get_all_lines(["p4.exe","-x","-","diff","-sd"],[os.path.join(folder,"...") for folder in options.folders])
+        deletes=run_p4_and_get_all_lines(["p4.exe","-b","131072","-x","-","diff","-sd"],[os.path.join(folder,"...") for folder in options.folders])
 
     print_file_names(options,"add",adds)
     print_file_names(options,"edit",edits)
