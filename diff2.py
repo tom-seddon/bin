@@ -1,4 +1,4 @@
-import argparse,sys,os,os.path,subprocess
+import argparse,sys,os,os.path,subprocess,fnmatch
 emacs=os.getenv("EMACS") is not None
 
 ##########################################################################
@@ -118,7 +118,16 @@ def main(options):
                             print_file(options,"edit",options.b,f_a)
 
                             if options.diff:
-                                result=subprocess.call(["diff.exe","-u",f_a_full,f_b_full])
+                                if len(options.diff_pattern)==0: diff=True
+                                else:
+                                    diff=False
+                                    for diff_pattern in options.diff_pattern:
+                                        if fnmatch.fnmatch(f_a_full,diff_pattern):
+                                            print '%s matches %s'%(f_a_full,diff_pattern)
+                                            diff=True
+                                            break
+
+                                if diff: result=subprocess.call(["diff.exe","-u",f_a_full,f_b_full])
                         
             else:
                 # deleted
@@ -174,6 +183,12 @@ if __name__=="__main__":
     parser.add_argument("--diff",
                         action="store_true",
                         help="if specified, do a diff of any edits")
+
+    parser.add_argument("--diff-pattern",
+                        default=[],
+                        action="append",
+                        metavar="PATTERN",
+                        help="when doing --diff, only diff files matching glob pattern %(metevar)s")
 
     parser.add_argument("-v",
                         "--verbose",
