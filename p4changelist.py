@@ -1,4 +1,4 @@
-import sys,argparse,os,subprocess,fnmatch,re
+import sys,argparse,os,subprocess,fnmatch,re,stat
 emacs=os.getenv("EMACS") is not None
 
 ##########################################################################
@@ -87,10 +87,24 @@ def main(options):
 
     output_lines=get_p4_lines(["p4.exe","-e","-x","-","where"],"\n".join(files))
 
+    total_size=0
+    num_files=0
     localPath_prefix="... localPath "
     for output_line in output_lines:
         if output_line.startswith(localPath_prefix):
-            print output_line[len(localPath_prefix):]
+            path=output_line[len(localPath_prefix):]
+            
+            if options.stats:
+                try:
+                    st=os.stat(path)
+                    total_size+=st.st_size
+                except: print>>sys.stderr,'WARNING: failed to stat: %s'%path
+
+            print path
+            num_files+=1
+
+    if options.stats:
+        print '{:,} byte(s) in {:,} matching file(s)'.format(total_size,num_files)
 
 ##########################################################################
 ##########################################################################
@@ -101,6 +115,11 @@ if __name__=="__main__":
     parser.add_argument("changelist",
                         type=int,
                         help="changelist to show.")
+
+    parser.add_argument('-s',
+                        '--stats',
+                        action='store_true',
+                        help='''print summary statistics''')
 
     parser.add_argument("-n",
                         "--name",
