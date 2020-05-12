@@ -22,6 +22,7 @@ def flushall():
 
 def pe(str):
     sys.stderr.write(str)
+    sys.stderr.flush()
 
 ##########################################################################
 ##########################################################################
@@ -102,7 +103,6 @@ def main(options,
                 con_stdout.SetConsoleTextAttribute(con_attr)
             
             pe("\n")
-
         r=0
         if not options.dry_run:
             r=subprocess.call(argv,
