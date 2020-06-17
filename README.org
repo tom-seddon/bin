@@ -82,6 +82,13 @@ Inspired by: http://ryanmaguiremusic.com/theghostinthemp3.html
 Dependencies: GNU make, mpg123, lame, rm, flac (only needed if you use
 a flac file as input)
 
+** fix_vpn_route_table /(Windows only)/
+
+Modify route tables when using VPN that takes over your PC's entire
+network interface. Removes VPN routes for internet and LAN, and
+(optionally) reinstates them for specified address ranges
+corresponding to whichever VPN resources you need to use.
+
 ** foreach
 
 Reads a list of files on stdin, one per line, and executes a command
