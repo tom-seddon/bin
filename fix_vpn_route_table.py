@@ -16,10 +16,15 @@ def v(msg):
 def run(args,
         stdin_data=''):
     v('RUN: %s\n'%args)
+
+    kwargs={}
+    if sys.version_info[0]==3: kwargs['encoding']='ASCII'
+    
     process=subprocess.Popen(args=args,
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
+                             stderr=subprocess.PIPE,
+                             **kwargs)
     output=process.communicate(stdin_data)
     if process.returncode!=0:
         sys.stderr.write(''.join(output))
@@ -76,15 +81,15 @@ def cmd_list(options):
         
         idx=interfaces[name].get('Idx')
 
-        print '%s: IP: %s'%(name,addr)
-        print '%s: Idx: %s'%(name,idx)
+        print('%s: IP: %s'%(name,addr))
+        print('%s: Idx: %s'%(name,idx))
 
 ##########################################################################
 ##########################################################################
 
 def get_single_match(map,what,glob):
     item=None
-    for k,v in map.iteritems():
+    for k,v in map.items():
         if fnmatch.fnmatch(k,glob):
             if item is not None: raise Exception('name matches more than one %s: %s'%(what,glob))
             item=v
