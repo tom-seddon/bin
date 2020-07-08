@@ -1,18 +1,8 @@
 ##########################################################################
 ##########################################################################
 
-import sys,argparse,os,subprocess
-
-got_win32console=True
-try:
-    # this (otherwise unnecessary) import fixes problems locating
-    # pywintypes with anaconda. see
-    # https://github.com/ContinuumIO/anaconda-issues/issues/37#issuecomment-109201314
-    import win32com.client
-    import win32console,pywintypes
-except:
-    got_win32console=False
-
+import sys,argparse,os,subprocess,ctypes,term_tools
+    
 ##########################################################################
 ##########################################################################
 
@@ -23,6 +13,13 @@ def flushall():
 def pe(str):
     sys.stderr.write(str)
     sys.stderr.flush()
+
+##########################################################################
+##########################################################################
+
+def get_quoted_arg(x):
+    if ' ' in x: return '"%s"'%x
+    else: return x
 
 ##########################################################################
 ##########################################################################
@@ -75,33 +72,20 @@ def main(options,
         if options.progress and options.verbose:
             progress_line+=": "
 
-        if options.verbose:
-            progress_line+=" ".join(argv)
+        cmd_line=" ".join([get_quoted_arg(arg) for arg in argv])
 
-        if got_win32console:
-            win32console.SetConsoleTitle("%d/%d: %s"%(1+i,n," ".join(argv)))
+        if options.verbose: progress_line+=cmd_line
+
+        term_tools.set_title("%d/%d: %s"%(1+i,n,cmd_line))
 
         if options.progress and not options.verbose:
             pe(progress_line)
             pe("\r")
         elif options.progress or options.verbose:
             con_stdout=None
-            
-            if got_win32console:
-                con_stdout=win32console.GetStdHandle(win32console.STD_OUTPUT_HANDLE)
-                try:
-                    con_info=con_stdout.GetConsoleScreenBufferInfo()
-                    con_attr=con_info["Attributes"]
-                    con_stdout.SetConsoleTextAttribute(((con_attr>>4)&0x0F)|((con_attr<<4)&0xF0))
-                except pywintypes.error:
-                    # probably redirected.
-                    con_stdout=None
-                
-            pe(progress_line)
 
-            if con_stdout!=None:
-                con_stdout.SetConsoleTextAttribute(con_attr)
-            
+            with term_tools.TextColourInverter(): pe(progress_line)
+
             pe("\n")
         r=0
         if not options.dry_run:
@@ -216,16 +200,16 @@ if __name__=="__main__":
     else:
         sep_index=argv.index("-")
 
-    old_title=None
-    if got_win32console:
-        old_title=win32console.GetConsoleTitle()
+    # old_title=None
+    # if got_win32console:
+    #     old_title=win32console.GetConsoleTitle()
 
     result=main(parser.parse_args(argv[:sep_index]),
                 argv[sep_index+1:])
 
-    if got_win32console:
-        if old_title is not None:
-            win32console.SetConsoleTitle(old_title)
+    # if got_win32console:
+    #     if old_title is not None:
+    #         win32console.SetConsoleTitle(old_title)
     
     sys.exit(result)
     
