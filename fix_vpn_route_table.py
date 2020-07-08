@@ -177,10 +177,11 @@ def cmd_fix(options):
          'if',str(vpn_interface.get('Idx'))])
 
     # Remove VPN routes for internet.
-    run(['route',
-         'delete',
-         '0.0.0.0',
-         'if',str(vpn_interface.get('Idx'))])
+    if not options.vpn_internet:
+        run(['route',
+             'delete',
+             '0.0.0.0',
+             'if',str(vpn_interface.get('Idx'))])
 
     # (don't bother doing this next bit - the mask is 0xfffffff...)
 
@@ -223,6 +224,7 @@ def fix_vpn_route_table(argv):
     list_parser.set_defaults(func=cmd_list)
 
     fix_parser=subparsers.add_parser('fix')
+    fix_parser.add_argument('--vpn-internet',action='store_true',help='use VPN for internet traffic')
     fix_parser.add_argument('--vpn',dest='vpn_addrs',default=[],action='append',metavar='ADDR',help='assign %(metavar)s range to the VPN, trailing 0s implying (bytewise) address mask')
     fix_parser.add_argument('lan_adapter',metavar='LAN-ADAPTER',help='glob pattern matching LAN adapter')
     fix_parser.add_argument('vpn_adapter',metavar='VPN-ADAPTER',help='glob pattern matching VPN adapter')
