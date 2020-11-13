@@ -278,3 +278,51 @@ you're not sure why.
 
 Lists WAV file chunks. Pretty-prints chunks it knows about.
 
+
+* third party
+
+See each file for the licence.
+
+** img_fingerprint, pdb_fingerprint_from_img
+
+See https://github.com/chromium/chromium/tree/master/tools/symsrc
+
+** pefile
+
+https://github.com/erocarrera/pefile
+
+* half baked/WIP
+
+Written with the intent of being useful, but, for now, at your own
+risk...
+
+** dmp_modules /(Windows only)/
+
+Invokes [[https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-download-tools][=cdb=]] to print a list of the modules in a Windows .dmp file.
+
+** find_exe_or_pdb
+
+Finds a Windows .exe or .pdb by embedded timestamp in a folder
+structure. This is the info used to find the .pdb that matches a .exe;
+when you have one of the pair, this might help you find the other.
+
+For a bit more about this, see
+http://www.debuginfo.com/articles/debuginfomatch.html
+
+** pdb_info
+
+Print some info about a .pdb file.
+
+For an overview of the pdb format, see
+https://llvm.org/docs/PDB/MsfFile.html
+
+** pe_header
+
+Print some stuff - though not much, at least yet - from an EXE header.
+
+This is a tiny little bit like =dumpbin /headers EXE= in a Visual
+Studio command prompt, but the output is a compact, one-line format,
+for easier interop with =grep= or =findstr=.
+
+For an overview of the PE format, see
+https://en.wikipedia.org/wiki/Portable_Executable
