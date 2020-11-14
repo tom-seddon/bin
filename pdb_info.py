@@ -93,24 +93,18 @@ class MSFReader:
         if header[0:32]!="Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00":
             self._fatal('no MSF header')
 
-        # header_fields=struct.unpack('<IIIIII',header[32:32+24])
+        header_fields=struct.unpack_from('<IIIIII',header,32)
 
-        # self._BlockSize=header_fields[0]
-        # self._NumBlocks=header_fields[2]
-        # self._NumDirectoryBytes=header_fields[3]
-        # self._BlockMapAddr=header_fields[5]
-
-        self._BlockSize=get4(header,32+0)
-        self._NumBlocks=get4(header,32+8)
+        self._BlockSize=header_fields[0]
+        self._NumBlocks=header_fields[2]
+        self._NumDirectoryBytes=header_fields[3]
+        self._BlockMapAddr=header_fields[5]
 
         # pv('BlockSize=%d NumBlocks=%d\n'%(self._BlockSize,self._NumBlocks))
         
         expected_size=self._NumBlocks*self._BlockSize
         if expected_size!=st.st_size:
             fatal('bad PDB file size: expected %d bytes, got %d bytes'%(expected,st.st_size))
-
-        self._NumDirectoryBytes=get4(header,32+12)
-        self._BlockMapAddr=get4(header,32+20)
 
         # size of block map, in blocks
         block_map_size_blocks=self._num_blocks(self._NumDirectoryBytes)
@@ -126,25 +120,24 @@ class MSFReader:
         pv('block_map_size_blocks=%d\n'%block_map_size_blocks)
 
         block_map=self._read_block(self._BlockMapAddr)
+        block_map=struct.unpack_from('<'+block_map_size_blocks*'I',
+                                     block_map,
+                                     0)
 
         stream_directory=''
-        for i in range(block_map_size_blocks):
-            block_index=get4(block_map,i*4)
-            stream_directory+=self._read_block(block_index)
+        for block_index in block_map: stream_directory+=self._read_block(block_index)
 
         offset=0
         
-        NumStreams,=struct.unpack('<I',stream_directory[0:4])
+        NumStreams,=struct.unpack_from('<I',stream_directory,0)
         offset+=4
 
         pv('NumStreams=%d\n'%NumStreams)
 
-        self._StreamSizes=[]
-        for i in range(NumStreams):
-            self._StreamSizes.append(get4(stream_directory,offset))
-            offset+=4
-
-        assert offset==4+NumStreams*4
+        self._StreamSizes=struct.unpack_from('<'+NumStreams*'I',
+                                             stream_directory,
+                                             4)
+        offset+=NumStreams*4
 
         # n=sum(self._StreamSizes)
         # print n
@@ -154,14 +147,10 @@ class MSFReader:
         self._StreamBlocks=[]
         for stream_index,stream_size in enumerate(self._StreamSizes):
             num_blocks=self._num_blocks(stream_size)
-            self._StreamBlocks.append([])
-            pvn(2,'@+%d Stream[%d]: StreamSize=%d (num_blocks=%d):'%(offset,stream_index,stream_size,num_blocks))
-            for i in range(num_blocks):
-                block=get4(stream_directory,offset)
-                pvn(3,' %d'%block)
-                self._StreamBlocks[-1].append(block)
-                offset+=4
-            pvn(2,'\n')
+            self._StreamBlocks.append(struct.unpack_from('<'+num_blocks*'I',
+                                                         stream_directory,
+                                                         offset))
+            offset+=num_blocks*4
 
         #assert offset==self._NumDirectoryBytes,(offset,self._NumDirectoryBytes)
 
@@ -234,12 +223,12 @@ def get_pdb_header(path):
         dumpv(PdbStreamHeader,'PdbStreamHeader')
         #print PdbStreamHeader
 
-        Version=get4(PdbStreamHeader,0)
-        Signature=get4(PdbStreamHeader,4)
-        Age=get4(PdbStreamHeader,8)
-        Guid=0
-        for i in range(12,28): Guid=(Guid<<8)|ord(PdbStreamHeader[i])
-        Guid=uuid.UUID(int=Guid)
+        Version,Signature,Age=struct.unpack_from('<III',PdbStreamHeader,0)
+        
+        Guid_str=struct.unpack_from('<cccccccccccccccc',PdbStreamHeader,12)
+        Guid_int=0
+        for c in Guid_str: Guid_int=(Guid_int<<8)|ord(c)
+        Guid=uuid.UUID(int=Guid_int)
 
         VC70=20000404
         if Version!=VC70:
