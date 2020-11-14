@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import sys,os,os.path,argparse,stat,math,collections,uuid,numbers
+import sys,os,os.path,argparse,stat,math,collections,uuid,numbers,struct
 
 ##########################################################################
 ##########################################################################
@@ -54,9 +54,9 @@ def dumpv(data,name=None):
 
         print line
         
-def get2(xs,i): return xs[i+0]<<0|xs[i+1]<<8
-def get4(xs,i): return xs[i+0]<<0|xs[i+1]<<8|xs[i+2]<<16|xs[i+3]<<24
-def str_bytes(s): return [ord(c) for c in s]
+# def get2(xs,i): return xs[i+0]<<0|xs[i+1]<<8
+def get4(xs,i): return struct.unpack('<I',xs[i:i+4])[0] # return xs[i+0]<<0|xs[i+1]<<8|xs[i+2]<<16|xs[i+3]<<24
+# def str_bytes(s): return [ord(c) for c in s]
 
 ##########################################################################
 ##########################################################################
@@ -90,8 +90,15 @@ class MSFReader:
         self._f=open(self._path,'rb')
 
         header=self._read(0x20+6*64)
-        if header[0:32]!=str_bytes("Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00"):
+        if header[0:32]!="Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00":
             self._fatal('no MSF header')
+
+        # header_fields=struct.unpack('<IIIIII',header[32:32+24])
+
+        # self._BlockSize=header_fields[0]
+        # self._NumBlocks=header_fields[2]
+        # self._NumDirectoryBytes=header_fields[3]
+        # self._BlockMapAddr=header_fields[5]
 
         self._BlockSize=get4(header,32+0)
         self._NumBlocks=get4(header,32+8)
@@ -120,14 +127,14 @@ class MSFReader:
 
         block_map=self._read_block(self._BlockMapAddr)
 
-        stream_directory=[]
+        stream_directory=''
         for i in range(block_map_size_blocks):
             block_index=get4(block_map,i*4)
             stream_directory+=self._read_block(block_index)
 
         offset=0
         
-        NumStreams=get4(stream_directory,offset)
+        NumStreams,=struct.unpack('<I',stream_directory[0:4])
         offset+=4
 
         pv('NumStreams=%d\n'%NumStreams)
@@ -174,7 +181,7 @@ class MSFReader:
         data=self._f.read(n)
         if len(data)!=n: self._fatal('failed to read %d byte(s) from +0x%x'%(n,pos))
 
-        return str_bytes(data)
+        return data
 
     def _read_block(self,index):
         if index>=self._NumBlocks: self._fatal('invalid block index: %d'%index)
@@ -194,7 +201,7 @@ class MSFReader:
 
         num_bytes_left=num_bytes
 
-        data=[]
+        data=''
 
         while num_bytes_left>0:
             block=self._read_block(self._StreamBlocks[stream_index][block_index_index])
@@ -230,7 +237,9 @@ def get_pdb_header(path):
         Version=get4(PdbStreamHeader,0)
         Signature=get4(PdbStreamHeader,4)
         Age=get4(PdbStreamHeader,8)
-        Guid=PdbStreamHeader[12:28]
+        Guid=0
+        for i in range(12,28): Guid=(Guid<<8)|ord(PdbStreamHeader[i])
+        Guid=uuid.UUID(int=Guid)
 
         VC70=20000404
         if Version!=VC70:
@@ -243,12 +252,10 @@ def get_pdb_header(path):
                                                                    Version))
 
         pv('Signature: %08x\n'%Signature)
-        pv('GUID: {%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x}\n'%tuple(Guid))
+        pv('GUID: %s\n'%Guid)
+        #pv('GUID: {%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x}\n'%tuple(Guid))
 
-        guid_int=0
-        for x in Guid: guid_int=(guid_int<<8)|x
-
-        return PDBHeader(Version,Signature,Age,uuid.UUID(int=guid_int))
+        return PDBHeader(Version,Signature,Age,Guid)
 
 ##########################################################################
 ##########################################################################
