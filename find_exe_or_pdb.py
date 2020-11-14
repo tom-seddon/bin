@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import sys,os,os.path,argparse,fnmatch
+import sys,os,os.path,argparse,fnmatch,stat
 import pdb_info
 import pe_header
 
@@ -27,13 +27,15 @@ def main2(options):
     
     def check_pdb(path):
         try:
+            st=os.stat(path)
+            if st.st_size==0: return False
             header=pdb_info.get_pdb_header(path)
             pv('%08x: %s\n'%(header.Signature,path))
             return header.Signature==options.timestamp
-        except pdb_info.PDBError,e:
-            print>>sys.stderr,'WARNING: %s: %s'%(e.pdb_path,e.pdb_message)
-            return False
-
+        except pdb_info.PDBError,e: print>>sys.stderr,'WARNING: %s: %s'%(e.pdb_path,e.pdb_message)
+        except Error,e: print>>sys.stderr,'WARNING: %s: %s'%(path,e.message)
+        return False
+    
     def check_exe(path):
         timestamp=pe_header.get_pe_timestamp(path)
         return timestamp==options.timestamp
