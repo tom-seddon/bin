@@ -133,7 +133,7 @@ def get_implied_ipv4_mask(addr):
     if (addr&0x00ffffff)==0: return 0xff000000
     if (addr&0x0000ffff)==0: return 0xffff0000
     if (addr&0x000000ff)==0: return 0xffffff00
-    raise Exception('implausible implied IPv4 mask for address: %s'%get_ipv4_str(addr))
+    return 0xffffffff
 
 ##########################################################################
 ##########################################################################
