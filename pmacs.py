@@ -14,11 +14,11 @@ except:
 ##########################################################################
 
 def main(options):
-    data=sys.stdin.read()
+    if sys.version_info[0]<3: data=sys.stdin.read()
+    else: data=sys.stdin.buffer.read()
 
     temp_fname=os.path.join(tempfile.gettempdir(),"pmacs.%d.dat"%os.getpid())
-    with open(temp_fname,"wb") as f:
-        f.write(data)
+    with open(temp_fname,"wb") as f: f.write(data)
 
     # seems the safest way of ensuring elisp doesn't get anything wrong...
     fname_chars=""

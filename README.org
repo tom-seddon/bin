@@ -6,7 +6,9 @@ Most should work on Mac OS X and Windows, and probably Linux too.
 Most respond to =-h=.
 
 Anything Xcode- or iOS-related may suffer from bitrot or be now
-irrelevant...
+irrelevant.
+
+Python scripts are for use with Python 2.7, unless otherwise noted.
 
 ** bin2cstr
 
@@ -57,7 +59,7 @@ Does a folder diff without printing out too much verbiage.
 Can optionally invoke =diff= on edited files, to get the verbiage
 back.
 
-** dump
+** dump /(Python 2/3)/
 
 A version of the handy =*DUMP= command from the BBC Micro.
 
@@ -89,7 +91,7 @@ network interface. Removes VPN routes for internet and LAN, and
 (optionally) reinstates them for specified address ranges
 corresponding to whichever VPN resources you need to use.
 
-** foreach
+** foreach /(Python 2/3)/
 
 Reads a list of files on stdin, one per line, and executes a command
 for each file.
@@ -215,7 +217,7 @@ inaccuracies.
 
 Dependencies: PIL
 
-** pmacs
+** pmacs /(Python 2/3)/
 
 Sends stdin to emacs via =emacsclient=, so you can use emacs as the
 target of pipes.
