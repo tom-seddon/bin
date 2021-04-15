@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import sys,os,os.path,argparse,stat,math,collections,uuid,numbers,struct
+import sys,os,os.path,argparse,stat,math,collections,uuid,numbers,struct,traceback
 
 ##########################################################################
 ##########################################################################
@@ -147,6 +147,16 @@ class MSFReader:
         self._StreamBlocks=[]
         for stream_index,stream_size in enumerate(self._StreamSizes):
             num_blocks=self._num_blocks(stream_size)
+            # pv('Stream {}: size={:,} (0x{:x}) nblocks={} offset={}\n'.format(stream_index,
+            #                                                                  stream_size,
+            #                                                                  stream_size,
+            #                                                                  num_blocks,
+            #                                                                  offset))
+            if stream_size==0xffffffff:
+                # wtfffff
+                num_blocks=0
+            # pv('Stream %d: size=%d nblocks=%d offset=%d\n'%(stream_index,stream_size,num_blocks,offset))
+            # print '%d %d'%(num_blocks,offset)
             self._StreamBlocks.append(struct.unpack_from('<'+num_blocks*'I',
                                                          stream_directory,
                                                          offset))
@@ -225,10 +235,30 @@ def get_pdb_header(path):
 
         Version,Signature,Age=struct.unpack_from('<III',PdbStreamHeader,0)
         
-        Guid_str=struct.unpack_from('<cccccccccccccccc',PdbStreamHeader,12)
-        Guid_int=0
-        for c in Guid_str: Guid_int=(Guid_int<<8)|ord(c)
-        Guid=uuid.UUID(int=Guid_int)
+        # Guid_str=struct.unpack_from('<cccccccccccccccc',PdbStreamHeader,12)
+        # Guid_int=0
+        # for c in Guid_str: Guid_int=(Guid_int<<8)|ord(c)
+        # Guid=uuid.UUID(bytes=PdbStreamHeader[12:12+16])
+
+        # Couldn't figure out how to coax uuid.UUID to print the digits out in the right order.
+
+        Guid=[ord(x) for x in PdbStreamHeader[12:12+16]]
+        Guid='{%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x}'%(Guid[3],
+                                                                                       Guid[2],
+                                                                                       Guid[1],
+                                                                                       Guid[0],
+                                                                                       Guid[5],
+                                                                                       Guid[4],
+                                                                                       Guid[7],
+                                                                                       Guid[6],
+                                                                                       Guid[8],
+                                                                                       Guid[9],
+                                                                                       Guid[10],
+                                                                                       Guid[11],
+                                                                                       Guid[12],
+                                                                                       Guid[13],
+                                                                                       Guid[14],
+                                                                                       Guid[15])
 
         VC70=20000404
         if Version!=VC70:
@@ -254,6 +284,7 @@ def pdb_info(options):
 
     try: header=get_pdb_header(options.pdb_path)
     except PDBError,e:
+        pv(traceback.format_exc())
         print>>sys.stderr,'FATAL: %s'%e.message
         sys.exit(1)
 
@@ -263,7 +294,7 @@ def pdb_info(options):
     if options.timestamp: n+=1
 
     def format_attr(key,value):
-        if n>1: return '%s=%s'%(key,value)
+        if n>1: return '%s = %s'%(key,value)
         else: return value
 
     def spacing(line):
@@ -275,7 +306,7 @@ def pdb_info(options):
     if options.age: line+='%s%s'%(spacing(line),format_attr('age','0x%08x'%header.Age))
     if options.guid: line+='%s%s'%(spacing(line),format_attr('guid',header.Guid))
 
-    line+=': %s'%options.pdb_path
+    line+=' : %s'%options.pdb_path
 
     print line
     
