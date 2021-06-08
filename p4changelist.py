@@ -1,5 +1,12 @@
+from __future__ import print_function
 import sys,argparse,os,subprocess,fnmatch,re,stat,collections
 emacs=os.getenv("EMACS") is not None
+
+##########################################################################
+##########################################################################
+
+# regarding charset, so far "handled" very poorly, see
+# https://www.perforce.com/perforce/doc.current/user/i18nnotes.txt
 
 ##########################################################################
 ##########################################################################
@@ -10,7 +17,9 @@ def get_p4_lines(args,stdin_data):
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
     output=process.communicate(stdin_data)
-    return output[0].splitlines()
+    # print(output)
+
+    return output[0].decode('utf8').splitlines()
 
 ##########################################################################
 ##########################################################################
@@ -53,7 +62,6 @@ def parse_where_output(lines):
     while index<len(lines):
         line=lines[index]
         index+=1
-        
         if line.startswith(exit_prefix): break
 
         if line.startswith(info_prefix):
@@ -94,6 +102,9 @@ def remove_unwanted_files(changelist_files_by_depot_path,options):
 ##########################################################################
 
 def main(options):
+    # TODO...
+    # os.putenv('P4CHARSET','utf8')
+        
     changelist_files_by_depot_path={}
     
     if options.changelist==0:
@@ -107,7 +118,7 @@ def main(options):
                 break
                 
         if client_name is None:
-            print>>sys.stderr,"FATAL: couldn't find client name."
+            print("FATAL: couldn't find client name.",file=sys.stderr)
             sys.exit(1)
 
         output=get_p4_lines(["p4.exe","opened","-C",client_name],None)
@@ -134,13 +145,14 @@ def main(options):
                 cl_file.diff=diff_output[2:]
     else:
         output=get_p4_lines(["p4.exe","describe",'-du',str(options.changelist)],None)
-
-        # for k,v in enumerate(output): print '%d: %s'%(k,v)
+        #print(output)
+        
+        # for k,v in enumerate(output): print('%d: %s'%(k,v))
 
         # Affected files...
         try: index=output.index("Affected files ...")
         except IndexError:
-            print>>sys.stderr,"FATAL: no files in given changelist."
+            print("FATAL: no files in given changelist.",file=sys.stderr)
             sys.exit(1)
 
         while True:
@@ -219,17 +231,17 @@ def main(options):
             else: show=diff_flag==(cl_file.diff is not None)
 
             if show:
-                print cl_file.p4_file.localPath
+                print(cl_file.p4_file.localPath)
 
                 if options.diffs:
                     if cl_file.diff is None:
-                        print
-                        print '(No diff for file of type: %s)'%cl_file.type
-                        print
+                        print()
+                        print('(No diff for file of type: %s)'%cl_file.type)
+                        print()
                     else:
-                        print
-                        for line in cl_file.diff: print line
-                        print
+                        print()
+                        for line in cl_file.diff: print(line)
+                        print()
 
     if options.stats:
         total_size=0
@@ -237,9 +249,9 @@ def main(options):
             try:
                 st=os.stat(cl_file.p4_file.localPath)
                 total_size+=st.st_size
-            except: print>>sys.stderr,'WARNING: failed to stat: %s'%cl_file.p4_file.localPath
+            except: print('WARNING: failed to stat: %s'%cl_file.p4_file.localPath,file=sys.stderr)
 
-    if options.stats: print '{:,} byte(s) in {:,} matching file(s)'.format(total_size,len(changelist_files_by_depot_path))
+    if options.stats: print('{:,} byte(s) in {:,} matching file(s)'.format(total_size,len(changelist_files_by_depot_path)))
             
                 
     #     print_files(changelist_files_by_depot_path,False)
@@ -264,7 +276,7 @@ def main(options):
     #             total_size+=st.st_size
     #         except: 
 
-    #     print file.localPath
+    #     print(file.localPath)
     #     num_files+=1
 
     #     if options.diffs:
