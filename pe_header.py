@@ -1,43 +1,36 @@
 #!/usr/bin/python
-import sys,os,os.path,argparse
+import sys,os,os.path,argparse,struct
 
 # Upgrade to use https://github.com/erocarrera/pefile/ ?
 #
 # See also http://www.debuginfo.com/articles/debuginfomatch.html
+#
+# https://www.fireeye.com/blog/threat-research/2019/08/definitive-dossier-of-devilish-debug-details-part-one-pdb-paths-malware.html
 
 ##########################################################################
 ##########################################################################
 
-def get2(xs,i): return xs[i+0]<<0|xs[i+1]<<8
-def get4(xs,i): return xs[i+0]<<0|xs[i+1]<<8|xs[i+2]<<16|xs[i+3]<<24
+# def get2(xs,i): return xs[i+0]<<0|xs[i+1]<<8
+# def get4(xs,i): return xs[i+0]<<0|xs[i+1]<<8|xs[i+2]<<16|xs[i+3]<<24
 
 def get_pe_timestamp(path):
     def fatal(msg):
         print>>sys.stderr,'FATAL: %s: %s'%(path,msg)
         sys.exit(1)
 
-    def read(f,n):
-        pos=f.tell()
-        data=f.read(n)
-        if len(data)!=n:
-            fatal('failed to read %d byte(s) from +0x%x'%(n,pos))
-
-        return [ord(x) for x in data]
-    
     with open(path,'rb') as f: 
-        dos_header=read(f,0x40)
+        dos_header=f.read(0x40)
+        if len(dos_header)!=0x40: fatal('failed to read DOS header')
+        if dos_header[0:2]!='MZ': fatal('no MZ in DOS header')
 
-        if get2(dos_header,0)!=0x5a4d: fatal('no MZ in DOS header')
+        coff_header_offset=struct.unpack_from('<I',dos_header,0x3c)[0]
 
-        pe_header_offset=get4(dos_header,0x3c)
+        f.seek(coff_header_offset)
+        coff_header=f.read(0x18)
+        if len(coff_header)!=0x18: fatal('failed to read COFF header')
+        if coff_header[0:2]!='PE': fatal('no PE in COFF header')
 
-        f.seek(pe_header_offset)
-
-        coff_header=read(f,0x18)
-
-        if get4(coff_header,0)!=0x4550: fatal('no PE in COFF header')
-
-        return get4(coff_header,8)
+        return struct.unpack_from('<I',coff_header,8)[0]
 
 def pe_header(options):
     print 'TimeDateStamp=0x%08X: %s'%(get_pe_timestamp(options.exe_path),

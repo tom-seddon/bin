@@ -4,6 +4,14 @@ import sys,os,os.path,argparse,subprocess
 ##########################################################################
 ##########################################################################
 
+# TODO - should support https://microsoft.public.vc.debugger.narkive.com/6JboljH9/resyncing-exe-and-pdb
+#
+# !lmi EXE - prints out GUID for matching with pdb..
+
+
+##########################################################################
+##########################################################################
+
 def run(args,stdin_data):
     #print args
     process=subprocess.Popen(args=args)

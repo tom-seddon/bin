@@ -30,7 +30,7 @@ def main2(options):
             st=os.stat(path)
             if st.st_size==0: return False
             header=pdb_info.get_pdb_header(path)
-            pv('%08x: %s\n'%(header.Signature,path))
+            pv('%08x : %s\n'%(header.Signature,path))
             return header.Signature==options.timestamp
         except pdb_info.PDBError,e: print>>sys.stderr,'WARNING: %s: %s'%(e.pdb_path,e.pdb_message)
         except Error,e: print>>sys.stderr,'WARNING: %s: %s'%(path,e.message)
@@ -38,6 +38,7 @@ def main2(options):
     
     def check_exe(path):
         timestamp=pe_header.get_pe_timestamp(path)
+        pv('%08x : %s\n'%(timestamp,path))
         return timestamp==options.timestamp
     
     for path in options.paths:
