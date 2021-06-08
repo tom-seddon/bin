@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function
 import argparse,sys,glob
 
 ##########################################################################
@@ -10,15 +11,26 @@ def dump(f,options):
     cols=range(options.cols)
 
     while 1:
-        row=f.read(options.cols)
+        row=bytearray(f.read(options.cols))
 
-        if row=="":
-            break
+        if len(row)==0: break
 
-        line="%08X: %s  %s\n"%(offset+options.base,
-                               " ".join(["%02X"%ord(row[i]) if i<len(row) else "  " for i in cols]),
-                               "".join([(row[i] if ord(row[i])>=32 and ord(row[i])<=126 else ".") if i<len(row) else " " for i in cols]))
+        line='%08X:'%(offset+options.base)
         
+        for col in cols:
+            if col<len(row): line+=' %02x'%row[col]
+            else: line+='   '
+
+        line+=' '
+
+        for col in cols:
+            if col<len(row):
+                if row[col]>=32 and row[col]<=126: line+=chr(row[col])
+                else: line+='.'
+            else:  line+=' '
+
+        line+='\n'
+
         sys.stdout.write(line)
 
         offset+=options.cols
@@ -43,7 +55,7 @@ def main(options):
             if file_name=="-": dump(sys.stdin,options)
             else:
                 with open(file_name,"rb") as f: dump(f,options)
-    except IOError,e:
+    except IOError as e:
         if e.errno==32 or e.errno==22:
             # Broken pipe. Just ignore this.
             #
