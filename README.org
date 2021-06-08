@@ -33,6 +33,17 @@ it into a C program, and so on.
 
 Batch change of file extensions.
 
+** commas /(Python 2/3)/
+
+Prints input received on stdin, with thousands separators added to any
+numbers printed.
+
+: > p4 sync -N ...
+: Server network estimates: files added/updated/deleted=3913/1635/0, bytes added/updated=1593990200/1166508036
+:
+: > p4 sync -N ... | commas
+: Server network estimates: files added/updated/deleted=3,913/1,635/0, bytes added/updated=1,593,990,200/1,166,508,036
+
 ** compress_wavs
 
 Batch convert WAVs and FLACs to MP3s. Useful for devices that have
