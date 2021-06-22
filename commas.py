@@ -17,7 +17,9 @@ def main(argv):
                 if dot or len(number)<=3: sys.stdout.write(number)
                 else:
                     parts=[]
-                    for right in range(len(number)%3,len(number)+1,3):
+                    first=len(number)%3
+                    if first==0: first=3
+                    for right in range(first,len(number)+1,3):
                         left=right-3
                         if left<0: left=0
                         parts.append(number[left:right])
