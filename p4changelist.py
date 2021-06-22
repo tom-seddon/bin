@@ -8,6 +8,8 @@ emacs=os.getenv("EMACS") is not None
 # regarding charset, so far "handled" very poorly, see
 # https://www.perforce.com/perforce/doc.current/user/i18nnotes.txt
 
+g_verbose=False
+
 ##########################################################################
 ##########################################################################
 
@@ -16,10 +18,24 @@ def get_p4_lines(args,stdin_data):
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
-    output=process.communicate(stdin_data)
-    # print(output)
+    outputs=process.communicate(stdin_data)
 
-    return output[0].decode('utf8').splitlines()
+    outputs=[output.decode('utf8').splitlines() for output in outputs]
+
+    if g_verbose:
+        sep=80*'-'
+        print(sep,file=sys.stderr)
+        print('Command: %s'%args,file=sys.stderr)
+
+        def dump_output(name,index):
+            print('%d line(s) of %s'%(len(outputs[index]),name),file=sys.stderr)
+            for line in outputs[index]: print('    %s'%line)
+        
+        dump_output('stdout',0)
+        dump_output('stderr',1)
+        print(sep,file=sys.stderr)
+
+    return outputs
 
 ##########################################################################
 ##########################################################################
@@ -102,13 +118,16 @@ def remove_unwanted_files(changelist_files_by_depot_path,options):
 ##########################################################################
 
 def main(options):
+    global g_verbose
+    g_verbose=options.verbose
+    
     # TODO...
     # os.putenv('P4CHARSET','utf8')
         
     changelist_files_by_depot_path={}
     
     if options.changelist==0:
-        output=get_p4_lines(["p4.exe","info"],None)
+        output,error_output=get_p4_lines(["p4.exe","info"],None)
         
         prefix="Client name: "
         client_name=None
@@ -121,7 +140,7 @@ def main(options):
             print("FATAL: couldn't find client name.",file=sys.stderr)
             sys.exit(1)
 
-        output=get_p4_lines(["p4.exe","opened","-C",client_name],None)
+        output,error_output=get_p4_lines(["p4.exe","opened","-C",client_name],None)
 
         default_change_re=re.compile("^(?P<depot_path>.*)#[0-9]+ - edit default change .*$")
         for line in output:
@@ -138,26 +157,36 @@ def main(options):
         # proxy, it's not a huge problem.
         if options.diffs:
             for cl_file in changelist_files_by_depot_path.values():
-                diff_output=get_p4_lines(['p4.exe','diff','-du',cl_file.depot_path],None)
+                diff_output,diff_error_output=get_p4_lines(['p4.exe','diff','-du',cl_file.depot_path],None)
                 assert diff_output[0].startswith('--- ')
                 assert diff_output[1].startswith('+++ ')
 
                 cl_file.diff=diff_output[2:]
     else:
-        output=get_p4_lines(["p4.exe","describe",'-du',str(options.changelist)],None)
-        #print(output)
-        
+        output,error_output=get_p4_lines(["p4.exe","describe",'-du',str(options.changelist)],None)
+
+        if len(output)==0:
+            print('\n'.join(error_output),file=sys.stderr)
+            print('FATAL: failed to get changelist details')
+            sys.exit(1)
+
         # for k,v in enumerate(output): print('%d: %s'%(k,v))
 
         # Affected files...
-        try: index=output.index("Affected files ...")
-        except IndexError:
+        try:
+            index=output.index("Affected files ...")
+            index+=1
+        except ValueError:
             print("FATAL: no files in given changelist.",file=sys.stderr)
             sys.exit(1)
 
-        while True:
-            index+=1
+        while index<len(output):
             if output[index].strip()!="": break
+            index+=1
+
+        if index==len(output):
+            print("FATAL: no files in given changelist.",file=sys.stderr)
+            sys.exit(1)
 
         ellipsis="... "
 
@@ -179,7 +208,7 @@ def main(options):
         if options.diffs:
             try:
                 index=output.index('Differences ...')+2
-            except IndexError: index=None
+            except ValueError: index=None
 
             if index is not None:
                 diff_header_re=re.compile('^==== (?P<depot_path>.*)#(?P<revision>[0-9]+)\\s+\\((?P<ftype>.*)(\\+(?P<fmods>.*))?\\) ====$')
@@ -211,7 +240,8 @@ def main(options):
         # Remove anything undesirable.
         remove_unwanted_files(changelist_files_by_depot_path,options)
 
-    where_output=get_p4_lines(["p4.exe","-e","-x","-","where"],"\n".join([depot_path for depot_path in sorted(changelist_files_by_depot_path.keys())]))
+    files_list="\n".join([depot_path for depot_path in sorted(changelist_files_by_depot_path.keys())])
+    where_output,where_error_output=get_p4_lines(["p4.exe","-e","-x","-","where"],files_list.encode())
     where_result=parse_where_output(where_output)
 
     for p4_file in where_result:
@@ -288,6 +318,8 @@ def main(options):
             
 if __name__=="__main__":
     parser=argparse.ArgumentParser(description="print local paths of files in perforce changelist.")
+
+    parser.add_argument('-v','--verbose',action='store_true',help='''be more verbose''')
 
     parser.add_argument("changelist",
                         type=int,
