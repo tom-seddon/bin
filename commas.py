@@ -9,7 +9,6 @@ def main(argv):
     
     while True:
         c=sys.stdin.read(1)
-        if len(c)==0: break
 
         if c.isdigit(): number+=c
         else:
@@ -26,7 +25,9 @@ def main(argv):
                     sys.stdout.write(','.join(parts))
                 number=''
             dot=c=='.'
-            sys.stdout.write(c)
+            if len(c)>0: sys.stdout.write(c)
+
+        if len(c)==0: break
 
 ##########################################################################
 ##########################################################################
