@@ -13,12 +13,22 @@ except:
 ##########################################################################
 ##########################################################################
 
+def find_emacsclient(paths):
+    for path in paths:
+        if os.path.isfile(path): return path
+
+    for path in paths: sys.stderr.write('Not found: %s\n'%path)
+    sys.stderr.write('FATAL: failed to find emacsclient\n')
+    sys.exit(1)
+
 def main(options):
     if sys.version_info[0]<3: data=sys.stdin.read()
     else: data=sys.stdin.buffer.read()
 
     temp_fname=os.path.join(tempfile.gettempdir(),"pmacs.%d.dat"%os.getpid())
     with open(temp_fname,"wb") as f: f.write(data)
+
+    if options.verbose: sys.stderr.write("saved %d byte(s) to %s\n"%(len(data),temp_fname))
 
     # seems the safest way of ensuring elisp doesn't get anything wrong...
     fname_chars=""
@@ -44,38 +54,44 @@ def main(options):
     elisp+=[r'                 bufname)))']
     elisp+=[r'  (let ((fname (format "%s" %s)))'%(fname_chars," ".join(fname_bytes))]
     elisp+=[r'    (find-file fname)']
-    elisp+=[r'    (fundamental-mode)']
-    elisp+=[r'    (set-visited-file-name nil)']
-    elisp+=[r'    (rename-buffer bufname)']
-    elisp+=[r'    (delete-file fname)']
-    elisp+=[r'    (message "got %d bytes" (- (point-max) (point-min)))']
+    elisp+=[r'    (let ((num-chars (- (point-max) (point-min))))']
+    elisp+=[r'      (fundamental-mode)']
+    elisp+=[r'      (set-visited-file-name nil)']
+    elisp+=[r'      (rename-buffer bufname)']
+    elisp+=[r'      (delete-file fname)']
 
-    for command in options.commands:
-        elisp+=['    (command-execute \'%s)'%command]
+    if options.mode is not None: elisp+=[r'      (%s-mode)'%options.mode]
 
-    elisp+=[r'  ))']
+    for command in options.commands: elisp+=['      (command-execute \'%s)'%command]
+
+    # elisp+=[r'      (message "%d char(s) in buffer" num-chars)']
+
+    elisp+=[r'  )))']
 
     # if options.verbose:
     #     print>>sys.stderr,elisp
 
     # hmm...
     if sys.platform=="darwin":
-        emacsclient="/applications/emacs.app/contents/macos/bin/emacsclient"
+        emacsclient=find_emacsclient([
+            "/applications/emacs.app/contents/macos/bin/emacsclient",
+        ])
     elif sys.platform=="win32":
-        emacsclient="C:\\emacs\\bin\\emacsclient.exe"
-    else:
-        emacsclient="emacsclient"
+        emacsclient=find_emacsclient([
+            "C:\\emacs\\bin\\emacsclient.exe",
+            "O:\\emacs\\bin\\emacsclient.exe",
+        ])
+    else: emacsclient="emacsclient"
 
-    sys.stderr.write("saved %d byte(s) to %s\n"%(len(data),temp_fname))
-
-    argv=[emacsclient,
-          "-n",
-          "-e",
-          " ".join(elisp)]
+    argv=[emacsclient]
+    argv+=["--no-wait"]
+    if not options.verbose: argv+=['--suppress-output']
+    argv+=["--eval"," ".join(elisp)]
     #print argv
     r=subprocess.call(argv)
 
-    sys.stderr.write("emacsclient: %d\n"%r)
+    if options.verbose or r!=0: sys.stderr.write("emacsclient exit code: %d\n"%r)
+    sys.exit(r)
 
 ##########################################################################
 ##########################################################################
@@ -84,7 +100,8 @@ def pmacs(argv):
     parser=argparse.ArgumentParser()
 
     parser.add_argument('-v','--verbose',action='store_true',help='be more verbose')
-    parser.add_argument('-x',action='append',default=[],dest='commands',metavar='COMMAND',help='do (in effect) M-x %(metavar)s once file is loaded')
+    parser.add_argument('-x',action='append',default=[],dest='commands',metavar='COMMAND',help='do (in effect) M-x %(metavar)s once file is loaded and mode (if any) selected')
+    parser.add_argument('-m','--mode',default=None,metavar='MODE',help='select major mode %(metavar)s-mode')
 
     main(parser.parse_args(argv))
 
