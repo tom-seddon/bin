@@ -66,7 +66,9 @@ if os.name=='nt':
         attr=fg_attr<<0|bg_attr<<4
         SetConsoleTextAttribute(get_stdout_handle(),attr)
 
-    def set_title(title): SetConsoleTitleA(title)
+    def set_title(title):
+        # print(type(title))
+        SetConsoleTitleA(title.encode())
 else:        
     def get_text_colours(): return TextColours(0,15)
     def set_text_colours(fg,bg): pass
