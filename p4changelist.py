@@ -26,6 +26,7 @@ def get_p4_lines(args,stdin_data):
         sep=80*'-'
         print(sep,file=sys.stderr)
         print('Command: %s'%args,file=sys.stderr)
+        print('Exit code: %s'%process.returncode)
 
         def dump_output(name,index):
             print('%d line(s) of %s'%(len(outputs[index]),name),file=sys.stderr)
@@ -46,6 +47,7 @@ class ChangelistFile:
         self._depot_path=depot_path
         self.local_path=None
         self.diff=None
+        self.diff_error=None
         self.ftype=None
         self.fmods=None
         self.perforce_file=None
@@ -142,11 +144,12 @@ def main(options):
 
         output,error_output=get_p4_lines(["p4.exe","opened","-C",client_name],None)
 
-        default_change_re=re.compile("^(?P<depot_path>.*)#[0-9]+ - edit default change .*$")
+        default_change_re=re.compile("^(?P<depot_path>.*)#[0-9]+ - (?P<type>edit|add) default change .*$")
         for line in output:
             match=default_change_re.match(line)
             if match is not None:
                 depot_path=match.group('depot_path')
+                type=match.group('type')
                 assert depot_path not in changelist_files_by_depot_path
                 changelist_files_by_depot_path[depot_path]=ChangelistFile(depot_path)
                 continue
@@ -157,13 +160,22 @@ def main(options):
         # proxy, it's not a huge problem.
         if options.diffs:
             for cl_file in changelist_files_by_depot_path.values():
-                diff_output,diff_error_output=get_p4_lines(['p4.exe','diff','-du',cl_file.depot_path],None)
-                assert diff_output[0].startswith('--- ')
-                assert diff_output[1].startswith('+++ ')
+                diff_output,diff_error_output=get_p4_lines(['p4.exe',
+                                                            'diff',
+                                                            '-du%d'%options.num_diff_context_lines,
+                                                            cl_file.depot_path],None)
+                if len(diff_error_output)>0:
+                    cl_file.diff_error=diff_error_output
+                else:
+                    assert diff_output[0].startswith('--- ')
+                    assert diff_output[1].startswith('+++ ')
 
-                cl_file.diff=diff_output[2:]
+                    cl_file.diff=diff_output[2:]
     else:
-        output,error_output=get_p4_lines(["p4.exe","describe",'-du',str(options.changelist)],None)
+        output,error_output=get_p4_lines(["p4.exe",
+                                          "describe",
+                                          '-du%d'%options.num_diff_context_lines,
+                                          str(options.changelist)],None)
 
         if len(output)==0:
             print('\n'.join(error_output),file=sys.stderr)
@@ -261,10 +273,15 @@ def main(options):
             else: show=diff_flag==(cl_file.diff is not None)
 
             if show:
-                print(cl_file.p4_file.localPath)
+                if options.depot: print(cl_file.p4_file.depotFile)
+                else: print(cl_file.p4_file.localPath)
 
                 if options.diffs:
-                    if cl_file.diff is None:
+                    if cl_file.diff_error is not None:
+                        print()
+                        for line in cl_file.diff_error: print(line)
+                        print()
+                    elif cl_file.diff is None:
                         print()
                         print('(No diff for file of type: %s)'%cl_file.type)
                         print()
@@ -328,12 +345,25 @@ if __name__=="__main__":
     parser.add_argument('-d',
                         '--diffs',
                         action='store_true',
-                        help='''show unified diffs (undiffables printed first)''')
+                        help='''show unified diffs (undiffables printed first).''')
+
+    parser.add_argument('-c',
+                        '--context',
+                        metavar='N',
+                        dest='num_diff_context_lines',
+                        type=int,
+                        default=3,
+                        help='''set number of diff context lines. Default: %(default)d''')
 
     parser.add_argument('-s',
                         '--stats',
                         action='store_true',
                         help='''print summary statistics''')
+
+    parser.add_argument('-D',
+                        '--depot',
+                        action='store_true',
+                        help='''print depot path rather than local path''')
 
     parser.add_argument("-n",
                         "--name",
