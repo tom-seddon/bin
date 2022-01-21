@@ -12,7 +12,6 @@ def dump(f,options):
 
     while 1:
         row=bytearray(f.read(options.cols))
-
         if len(row)==0: break
 
         line='%08X:'%(offset+options.base)
@@ -52,7 +51,7 @@ def main(options):
             if len(options.file_names)>1:
                 sys.stdout.write("\n** %s:\n\n"%file_name)
 
-            if file_name=="-": dump(sys.stdin,options)
+            if file_name=="-": dump(sys.stdin.buffer,options)
             else:
                 with open(file_name,"rb") as f: dump(f,options)
     except IOError as e:
