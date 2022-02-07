@@ -25,7 +25,7 @@ def main(options):
     if sys.version_info[0]<3: data=sys.stdin.read()
     else: data=sys.stdin.buffer.read()
 
-    temp_fname=os.path.join(tempfile.gettempdir(),"pmacs.%d.dat"%os.getpid())
+    temp_fname=os.path.join(tempfile.gettempdir(),"pmacs.%d.txt"%os.getpid())
     with open(temp_fname,"wb") as f: f.write(data)
 
     if options.verbose: sys.stderr.write("saved %d byte(s) to %s\n"%(len(data),temp_fname))
@@ -55,7 +55,7 @@ def main(options):
     elisp+=[r'  (let ((fname (format "%s" %s)))'%(fname_chars," ".join(fname_bytes))]
     elisp+=[r'    (find-file fname)']
     elisp+=[r'    (let ((num-chars (- (point-max) (point-min))))']
-    elisp+=[r'      (fundamental-mode)']
+    # elisp+=[r'      (fundamental-mode)']
     elisp+=[r'      (set-visited-file-name nil)']
     elisp+=[r'      (rename-buffer bufname)']
     elisp+=[r'      (delete-file fname)']
