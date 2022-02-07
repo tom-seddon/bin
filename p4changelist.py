@@ -259,7 +259,7 @@ def main(options):
         
         # Differences...
         if options.diffs:
-            if is_pending_changelist:
+            if is_pending_changelist and not options.shelved:
                 fill_cl_file_diffs(changelist_files_by_depot_path.values(),options)
             else:
                 try:
@@ -303,7 +303,9 @@ def main(options):
         cl_file=changelist_files_by_depot_path[p4_file.depotFile]
         cl_file.p4_file=p4_file
 
-    if options.diffs: diff_flags=[False,True]
+    if options.diffs:
+        diff_flags=[False,True]
+        if options.emacs: print('# -*- mode:diff -*-')
     else: diff_flags=[None]
 
     num_files=0
@@ -388,7 +390,12 @@ if __name__=="__main__":
     parser.add_argument('-d',
                         '--diffs',
                         action='store_true',
-                        help='''show unified diffs. Undiffables printed first. Pending changes are diffed against workspace copy. Shelved/submitted files are diffed against source revision.''')
+                        help='''show unified diffs. Undiffables printed first. Files are diffed against source revision''')
+
+    parser.add_argument('-e',
+                        '--emacs',
+                        action='store_true',
+                        help='''when diffing, be Emacs-friendly. Add a file local variable indicating diff mode''')
 
     parser.add_argument('-c',
                         '--context',
