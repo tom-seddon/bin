@@ -287,6 +287,10 @@ This tells you how the most recent backup differed from the
 penultimate one. Handy if Time Machine backs up a ton of stuff, and
 you're not sure why.
 
+** vsoutput /(Python 3)/
+
+Handle Visual Studio multithreaded build output.
+
 ** wavdump
 
 Lists WAV file chunks. Pretty-prints chunks it knows about.
