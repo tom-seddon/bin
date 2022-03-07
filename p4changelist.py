@@ -84,7 +84,7 @@ class ChangelistFile:
         self.diff_error=None
         self.ftype=ftype
         self.fmods=None
-        self.perforce_file=None
+        self.p4_file=None
 
     @property
     def depot_path(self): return self._depot_path
@@ -155,6 +155,13 @@ def remove_unwanted_files(changelist_files_by_depot_path,options):
 
 def fill_cl_file_diffs(cl_files,options):
     for cl_file in cl_files:
+        if cl_file.diff is not None:
+            # Might encounter the same ChangelistFile multiple times,
+            # because of the way the lists are built up.
+            # 
+            # TODO: should really fix this.
+            continue
+        
         diff_output,diff_error_output=get_p4_lines(['p4.exe',
                                                     'diff',
                              '-du%d'%options.num_diff_context_lines,
@@ -167,140 +174,209 @@ def fill_cl_file_diffs(cl_files,options):
 
             cl_file.diff=diff_output[2:]
 
+##########################################################################
+##########################################################################
+
+g_client_name=None
+
+def get_client_name():
+    global g_client_name
+    
+    if g_client_name is None:
+        p4_info_js=get_p4_json(['info'],None)
+        g_client_name=p4_info_js[0].get('clientName')
+        
+        if g_client_name is None:
+            print("FATAL: couldn't find client name.",file=sys.stderr)
+            sys.exit(1)
+
+    return g_client_name
+
+##########################################################################
+##########################################################################
+
+def get_changes_changelists(state,options):
+    js=get_p4_json(['changes','-s',state,'-c',get_client_name()],None)
+
+    changelists=set()
+    for j in js: changelists.add(int(j.get('change')))
+
+    return changelists
+
+##########################################################################
+##########################################################################
+
+def get_cl_files_for_default_changelist(options):
+    cl_files=[]
+    
+    p4_opened_js=get_p4_json(['opened','-C',get_client_name()],None)
+    for p4_opened_j in p4_opened_js:
+        if p4_opened_j.get('action')=='edit' and p4_opened_j.get('change')=='default':
+            depot_path=p4_opened_j.get('depotFile')
+            ftype=p4_opened_j.get('type')
+
+            cl_files.append(ChangelistFile(depot_path,ftype))
+
+    remove_unwanted_files(cl_files,options)
+
+    # This is rather inefficient, but since I typically use a p4
+    # proxy, it's not a huge problem.
+    #
+    # The output of p4 -ztag -Mj is a bit easier to work with, but
+    # I had a few instances of diffs with random junk at the end.
+    if options.diffs: fill_cl_file_diffs(cl_files,options)
+
+    return cl_files
+
+##########################################################################
+##########################################################################
+
+def get_cl_file_by_depot_path(cl_files):
+    cl_file_by_depot_path={}
+    for cl_file in cl_files: cl_file_by_depot_path[cl_file.depot_path]=cl_file
+    
+    return cl_file_by_depot_path
+
+##########################################################################
+##########################################################################
+
+def get_cl_files_for_changelist(changelist,quiet,options):
+    output,error_output=get_p4_lines(["p4.exe",
+                                      "describe",
+                                      '-S' if options.shelved else None,
+                                      '-du%d'%options.num_diff_context_lines,
+                                      str(changelist)],None)
+
+    if len(output)==0:
+        print('\n'.join(error_output),file=sys.stderr)
+        print('FATAL: failed to get details for changelist: %d'%changelist,file=sys.stderr)
+        sys.exit(1)
+
+    # for k,v in enumerate(output): print('%d: %s'%(k,v))
+
+    is_pending_changelist=output[0].endswith('*pending*')
+
+    # Affected files...
+    try:
+        if options.shelved: header='Shelved files ...'
+        else: header='Affected files ...'
+        index=output.index(header)
+        index+=2
+    except ValueError:
+        if quiet: return []
+        print("FATAL: no files in changelist: %d"%changelist,file=sys.stderr)
+        sys.exit(1)
+
+    while index<len(output):
+        if output[index].strip()!="": break
+        index+=1
+
+    # if index==len(output):
+    #     if quiet: return []
+    #     print("FATAL: no files in given changelist.",file=sys.stderr)
+    #     sys.exit(1)
+
+    ellipsis="... "
+
+    cl_files=[]
+    done=False
+    while index<len(output) and output[index].startswith(ellipsis):
+        depot_path=output[index][len(ellipsis):].strip()
+
+        h=depot_path.find("#")
+        if h>=0: depot_path=depot_path[:h].strip()
+
+        #print('add (%d): %s'%(changelist,depot_path))
+        cl_files.append(ChangelistFile(depot_path,None))
+
+        index+=1
+
+    remove_unwanted_files(cl_files,options)
+
+    # Differences...
+    if options.diffs:
+        if is_pending_changelist and not options.shelved: fill_cl_file_diffs(cl_files,options)
+        else:
+            try: index=output.index('Differences ...')+2
+            except ValueError: index=None
+
+            if index is not None:
+                cl_file_by_depot_path=get_cl_file_by_depot_path(cl_files)
+                
+                diff_header_re=re.compile('^==== (?P<depot_path>.*)#(?P<revision>[0-9]+)\\s+\\((?P<ftype>.*)(\\+(?P<fmods>.*))?\\) ====$')
+
+                while index<len(output):
+                    match=diff_header_re.match(output[index])
+                    assert match is not None,(index,output[index])
+
+                    depot_path=match.group('depot_path')
+
+                    # file may not exist, if remove_unwanted_files
+                    # stripped it out
+                    file=cl_file_by_depot_path.get(depot_path)
+
+                    if file is not None:
+                        file.ftype=match.group('ftype')
+                        file.fmods=match.group('fmods')
+
+                    index+=1    # skip header
+                    index+=1    # skip separating blank line
+
+                    begin=index
+                    while index<len(output) and len(output[index])>0: index+=1
+
+                    end=index
+                    index+=1    # skip terminating blank line
+
+                    if file is not None:
+                        if file.ftype=='text': file.diff=output[begin:end]
+
+    return cl_files
+
+##########################################################################
+##########################################################################
+
 def main(options):
     global g_verbose
     g_verbose=options.verbose
     
     # TODO...
     # os.putenv('P4CHARSET','utf8')
-        
-    changelist_files_by_depot_path={}
-    
-    if options.changelist==0:
-        if options.shelved:
+
+    # form list of unique changelists specified.
+    changelists=set()
+    for changelist in options.changelists:
+        if changelist=='w':
+            changelists.add(0)  # default changelist
+            changelists.update(get_changes_changelists('pending',options))
+            changelists.update(get_changes_changelists('shelved',options))
+        else:
+            try: changelists.add(int(changelist))
+            except:
+                print('FATAL: bad changelist number: %s'%changelist,file=sys.stderr)
+                sys.exit(1)
+
+    if options.shelved:
+        if len(changelists)==1 and 0 in changelists:
             print('FATAL: default changelist not compatible with -S/--shelved',file=sys.stderr)
             sys.exit(1)
-            
-        p4_info_js=get_p4_json(['info'],None)
-        client_name=p4_info_js[0].get('clientName')
-        
-        if client_name is None:
-            print("FATAL: couldn't find client name.",file=sys.stderr)
-            sys.exit(1)
+        else: changelists.remove(0)
 
-        p4_opened_js=get_p4_json(['opened','-C',client_name],None)
-        for p4_opened_j in p4_opened_js:
-            if p4_opened_j.get('action')=='edit' and p4_opened_j.get('change')=='default':
-                depot_path=p4_opened_j.get('depotFile')
-                ftype=p4_opened_j.get('type')
+    quiet_errors=len(changelists)>1
 
-                assert depot_path not in changelist_files_by_depot_path
-                changelist_files_by_depot_path[depot_path]=ChangelistFile(depot_path,ftype)
+    cl_files=[]
+    for changelist in changelists:
+        if changelist==0: cl_files+=get_cl_files_for_default_changelist(options)
+        else: cl_files+=get_cl_files_for_changelist(changelist,len(changelists)>1,options)
 
-        remove_unwanted_files(changelist_files_by_depot_path,options)
+    cl_file_by_depot_path=get_cl_file_by_depot_path(cl_files)
 
-        # This is rather inefficient, but since I typically use a p4
-        # proxy, it's not a huge problem.
-        #
-        # The output of p4 -ztag -Mj is a bit easier to work with, but
-        # I had a few instances of diffs with random junk at the end.
-        if options.diffs: fill_cl_file_diffs(changelist_files_by_depot_path.values(),options)
-    else:
-        output,error_output=get_p4_lines(["p4.exe",
-                                          "describe",
-                                          '-S' if options.shelved else None,
-                                          '-du%d'%options.num_diff_context_lines,
-                                          str(options.changelist)],None)
-
-        if len(output)==0:
-            print('\n'.join(error_output),file=sys.stderr)
-            print('FATAL: failed to get changelist details')
-            sys.exit(1)
-
-        # for k,v in enumerate(output): print('%d: %s'%(k,v))
-
-        is_pending_changelist=output[0].endswith('*pending*')
-
-        # Affected files...
-        try:
-            if options.shelved: header='Shelved files ...'
-            else: header='Affected files ...'
-            index=output.index(header)
-            index+=1
-        except ValueError:
-            print("FATAL: no files in given changelist.",file=sys.stderr)
-            sys.exit(1)
-
-        while index<len(output):
-            if output[index].strip()!="": break
-            index+=1
-
-        if index==len(output):
-            print("FATAL: no files in given changelist.",file=sys.stderr)
-            sys.exit(1)
-
-        ellipsis="... "
-
-        done=False
-        while index<len(output):
-            depot_path=output[index].strip()
-            if depot_path=="": break
-
-            if depot_path.startswith(ellipsis): depot_path=depot_path[len(ellipsis):]
-
-            h=depot_path.find("#")
-            if h>=0: depot_path=depot_path[:h].strip()
-
-            changelist_files_by_depot_path[depot_path]=ChangelistFile(depot_path,None)
-
-            index+=1
-
-        remove_unwanted_files(changelist_files_by_depot_path,options)
-        
-        # Differences...
-        if options.diffs:
-            if is_pending_changelist and not options.shelved:
-                fill_cl_file_diffs(changelist_files_by_depot_path.values(),options)
-            else:
-                try:
-                    index=output.index('Differences ...')+2
-                except ValueError: index=None
-
-                if index is not None:
-                    diff_header_re=re.compile('^==== (?P<depot_path>.*)#(?P<revision>[0-9]+)\\s+\\((?P<ftype>.*)(\\+(?P<fmods>.*))?\\) ====$')
-
-                    while index<len(output):
-                        match=diff_header_re.match(output[index])
-                        assert match is not None,(index,output[index])
-
-                        depot_path=match.group('depot_path')
-
-                        # file may not exist, if remove_unwanted_files
-                        # stripped it out
-                        file=changelist_files_by_depot_path.get(depot_path)
-
-                        if file is not None:
-                            file.ftype=match.group('ftype')
-                            file.fmods=match.group('fmods')
-
-                        index+=1    # skip header
-                        index+=1    # skip separating blank line
-
-                        begin=index
-                        while index<len(output) and len(output[index])>0: index+=1
-
-                        end=index
-                        index+=1    # skip terminating blank line
-
-                        if file is not None:
-                            if file.ftype=='text': file.diff=output[begin:end]
-
-    files_list="\n".join([depot_path for depot_path in sorted(changelist_files_by_depot_path.keys())])
+    files_list="\n".join([depot_path for depot_path in sorted(cl_file_by_depot_path.keys())])
     where_output,where_error_output=get_p4_lines(["p4.exe","-e","-x","-","where"],files_list.encode())
     where_result=parse_where_output(where_output)
 
     for p4_file in where_result:
-        cl_file=changelist_files_by_depot_path[p4_file.depotFile]
+        cl_file=cl_file_by_depot_path[p4_file.depotFile]
         cl_file.p4_file=p4_file
 
     if options.diffs:
@@ -311,14 +387,15 @@ def main(options):
     num_files=0
     
     for diff_flag in diff_flags:
-        for depot_path in sorted(changelist_files_by_depot_path.keys()):
-            cl_file=changelist_files_by_depot_path[depot_path]
+        for depot_path in sorted(cl_file_by_depot_path.keys()):
+            cl_file=cl_file_by_depot_path[depot_path]
 
             if diff_flag is None: show=True
             else: show=diff_flag==(cl_file.diff is not None)
 
             if show:
-                if options.depot: print(cl_file.p4_file.depotFile)
+                if cl_file.p4_file is None: print('???????'+cl_file.depot_path)
+                elif options.depot: print(cl_file.p4_file.depotFile)
                 else: print(cl_file.p4_file.localPath)
 
                 if options.diffs:
@@ -337,43 +414,13 @@ def main(options):
 
     if options.stats:
         total_size=0
-        for cl_file in changelist_files_by_depot_path.values():
+        for cl_file in cl_file_by_depot_path.values():
             try:
                 st=os.stat(cl_file.p4_file.localPath)
                 total_size+=st.st_size
             except: print('WARNING: failed to stat: %s'%cl_file.p4_file.localPath,file=sys.stderr)
 
-    if options.stats: print('{:,} byte(s) in {:,} matching file(s)'.format(total_size,len(changelist_files_by_depot_path)))
-            
-                
-    #     print_files(changelist_files_by_depot_path,False)
-    #     print_files(changelist_files_by_depot_path,True)
-    # else: print_files(changelist_files_by_depot_path,None)
-
-
-    # def print_files(show_diffs):
-    # num_=0
-    # num_files=0
-    # for file in where_result:
-    #     cl_file=changelist_files_by_depot_path[file.depotFile]
-        
-    #     if options.diffs and not options.all_diffs:
-    #         if cl_file.diff is None:
-    #             num_undiffable+=1
-    #             continue
-            
-    #     if options.stats:
-    #         try:g
-    #             st=os.stat(file.localPath)
-    #             total_size+=st.st_size
-    #         except: 
-
-    #     print(file.localPath)
-    #     num_files+=1
-
-    #     if options.diffs:
-
-
+    if options.stats: print('{:,} byte(s) in {:,} matching file(s)'.format(total_size,len(cl_file_by_depot_path)))
 
 ##########################################################################
 ##########################################################################
@@ -383,9 +430,10 @@ if __name__=="__main__":
 
     parser.add_argument('-v','--verbose',action='store_true',help='''be more verbose''')
 
-    parser.add_argument("changelist",
-                        type=int,
-                        help="changelist to show, or 0 for the default changelist")
+    parser.add_argument("changelists",
+                        default=[],
+                        nargs='+',
+                        help="changelist(s) to show. 0 means default changelist, 'w' means default/pending/shelved changelist(s) in current workspace. When multiple changelists specified, some errors will be ignored")
 
     parser.add_argument('-d',
                         '--diffs',
