@@ -357,10 +357,11 @@ def main(options):
                 sys.exit(1)
 
     if options.shelved:
-        if len(changelists)==1 and 0 in changelists:
-            print('FATAL: default changelist not compatible with -S/--shelved',file=sys.stderr)
-            sys.exit(1)
-        else: changelists.remove(0)
+        if 0 in changelists:
+            if len(changelists)==1:
+                print('FATAL: default changelist not compatible with -S/--shelved',file=sys.stderr)
+                sys.exit(1)
+            else:changelists.remove(0)
 
     quiet_errors=len(changelists)>1
 
