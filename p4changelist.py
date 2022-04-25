@@ -79,12 +79,12 @@ class ChangelistFile:
     def __init__(self,depot_path,ftype):
         assert depot_path is not None
         self._depot_path=depot_path
-        self.local_path=None
         self.diff=None
         self.diff_error=None
         self.ftype=ftype
         self.fmods=None
         self.p4_file=None
+        self.action=None
 
     @property
     def depot_path(self): return self._depot_path
@@ -153,6 +153,12 @@ def remove_unwanted_files(changelist_files_by_depot_path,options):
 ##########################################################################
 ##########################################################################
 
+def make_diff_for_added_file(lines): return ['+ %s'%line for line in lines]
+
+##########################################################################
+##########################################################################
+
+# Get diffs for edited files using p4 diff.
 def fill_cl_file_diffs(cl_files,options):
     for cl_file in cl_files:
         if cl_file.diff is not None:
@@ -161,18 +167,24 @@ def fill_cl_file_diffs(cl_files,options):
             # 
             # TODO: should really fix this.
             continue
-        
-        diff_output,diff_error_output=get_p4_lines(['p4.exe',
-                                                    'diff',
-                             '-du%d'%options.num_diff_context_lines,
-                             cl_file.depot_path],None)
-        if len(diff_error_output)>0:
-            cl_file.diff_error=diff_error_output
-        else:
-            assert diff_output[0].startswith('--- ')
-            assert diff_output[1].startswith('+++ ')
 
-            cl_file.diff=diff_output[2:]
+        if cl_file.action=='add':
+            # Leave this for later, once the local paths are known.
+            pass
+        elif cl_file.action=='edit':
+            diff_output,diff_error_output=get_p4_lines(['p4.exe',
+                                                        'diff',
+                                 '-du%d'%options.num_diff_context_lines,
+                                 cl_file.depot_path],None)
+            if len(diff_error_output)>0:
+                cl_file.diff_error=diff_error_output
+            else:
+                assert diff_output[0].startswith('--- ')
+                assert diff_output[1].startswith('+++ ')
+
+                cl_file.diff=diff_output[2:]
+        else:
+            cl_file.diff=['(No diff output for action: %s)'%cl_file.action]
 
 ##########################################################################
 ##########################################################################
@@ -211,11 +223,14 @@ def get_cl_files_for_default_changelist(options):
     
     p4_opened_js=get_p4_json(['opened','-C',get_client_name()],None)
     for p4_opened_j in p4_opened_js:
-        if p4_opened_j.get('action')=='edit' and p4_opened_j.get('change')=='default':
+        action=p4_opened_j.get('action')
+        if action in ['edit','add'] and p4_opened_j.get('change')=='default':
             depot_path=p4_opened_j.get('depotFile')
             ftype=p4_opened_j.get('type')
 
-            cl_files.append(ChangelistFile(depot_path,ftype))
+            cl_file=ChangelistFile(depot_path,ftype)
+            cl_file.action=action
+            cl_files.append(cl_file)
 
     remove_unwanted_files(cl_files,options)
 
@@ -283,11 +298,20 @@ def get_cl_files_for_changelist(changelist,quiet,options):
     while index<len(output) and output[index].startswith(ellipsis):
         depot_path=output[index][len(ellipsis):].strip()
 
+        action=None
+        
         h=depot_path.find("#")
-        if h>=0: depot_path=depot_path[:h].strip()
+        if h>=0:
+            suffix_parts=depot_path[h:].split()
+            if len(suffix_parts)>1: action=suffix_parts[-1]
+            depot_path=depot_path[:h].strip()
 
         #print('add (%d): %s'%(changelist,depot_path))
-        cl_files.append(ChangelistFile(depot_path,None))
+        cl_file=ChangelistFile(depot_path,None)
+        cl_file.action=action
+        cl_files.append(cl_file)
+
+        #print('%s: %s'%(cl_file.depot_path,cl_file.action))
 
         index+=1
 
@@ -295,11 +319,21 @@ def get_cl_files_for_changelist(changelist,quiet,options):
 
     # Differences...
     if options.diffs:
-        if is_pending_changelist and not options.shelved: fill_cl_file_diffs(cl_files,options)
+        if is_pending_changelist and not options.shelved:
+            # pending changelist, not shelved
+            #
+            # There may be files that only exist locally.
+            fill_cl_file_diffs(cl_files,options)
         else:
+            # pending changelist, shelved
+            # submitted changelist, shelved
+            # submitted changelist, not shelved
+            #
+            # Get diffs from the server.
             try: index=output.index('Differences ...')+2
             except ValueError: index=None
 
+            # scrape the p4 describe output for any diffs going
             if index is not None:
                 cl_file_by_depot_path=get_cl_file_by_depot_path(cl_files)
                 
@@ -329,9 +363,38 @@ def get_cl_files_for_changelist(changelist,quiet,options):
                     index+=1    # skip terminating blank line
 
                     if file is not None:
-                        if file.ftype=='text': file.diff=output[begin:end]
+                        if file.ftype=='text' or file.type=='utf8': file.diff=output[begin:end]
+
+            # The server doesn't generate diffs for added files. Get
+            # the file contents and make something up.
+            for cl_file in cl_files:
+                if cl_file.diff is None and cl_file.action=='add':
+                    if options.diff_no_adds: cl_file.diff=['(not diffing added file)']
+                    else:
+                        # pick appropriate CL number syntax
+                        if options.shelved: cl_syntax='@='
+                        else: cl_syntax='@'
+
+                        output,error_output=get_p4_lines(['p4.exe',
+                                                          'print',
+                                                          '-q',
+                                                          '%s%s%d'%(cl_file.depot_path,
+                                                                    cl_syntax,
+                                                                    changelist)],
+                                                         None)
+                        if len(output)>0 and len(error_output)==0:
+                            cl_file.diff=make_diff_for_added_file(output)
 
     return cl_files
+
+##########################################################################
+##########################################################################
+
+def update_diffs_for_local_added_files(cl_files):
+    for cl_file in cl_files:
+        if cl_file.action=='add' and cl_file.diff is None:
+            with open(cl_file.p4_file.localPath,'rt') as f: lines=f.readlines()
+            cl_file.diff=make_diff_for_added_file(lines)
 
 ##########################################################################
 ##########################################################################
@@ -379,6 +442,11 @@ def main(options):
     for p4_file in where_result:
         cl_file=cl_file_by_depot_path[p4_file.depotFile]
         cl_file.p4_file=p4_file
+
+    # Files added to a pending changelist only exist locally. Now that
+    # the local paths are (hopefully) known, generate the diffs for
+    # them.
+    update_diffs_for_local_added_files(cl_files)
 
     if options.diffs:
         diff_flags=[False,True]
@@ -440,6 +508,11 @@ if __name__=="__main__":
                         '--diffs',
                         action='store_true',
                         help='''show unified diffs. Undiffables printed first. Files are diffed against source revision''')
+
+    parser.add_argument('-A',
+                        '--diff-no-adds',
+                        action='store_true',
+                        help='''don\'t diff added files''')
 
     parser.add_argument('-e',
                         '--emacs',
