@@ -188,7 +188,7 @@ if __name__=="__main__":
                         default=[],
                         action="append",
                         metavar="PATTERN",
-                        help="when doing --diff, only diff files matching glob pattern %(metevar)s")
+                        help="when doing --diff, only diff files matching glob pattern %(metavar)s")
 
     parser.add_argument("-v",
                         "--verbose",
