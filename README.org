@@ -295,6 +295,26 @@ Handle Visual Studio multithreaded build output.
 
 Lists WAV file chunks. Pretty-prints chunks it knows about.
 
+** window_placement /(Python 3)/ /(Windows only)/
+
+Use `list` to list windows (optionally filtering by PID or window
+title) and their base64-encoded placement data. 
+
+Use `set` to set a single window's placement (filtering by PID or
+title is required) using the data printed out by `list`. 
+
+Intended workflow:
+
+1. have batch file or whatever that runs a few programs that open
+   windows in random places
+
+2. run batch file and arrange windows in desired layout
+
+3. use `window_placement list` interactively, to get the placement
+   data for each window of interest
+
+4. add `window_placement set` invocations to batch file (or wrapper
+   of) so that the desired window layout is reproduced on each run
 
 * third party
 
