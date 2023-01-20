@@ -11,6 +11,7 @@ def flushall():
     sys.stderr.flush()
 
 def pe(str):
+    sys.stdout.flush()
     sys.stderr.write(str)
     sys.stderr.flush()
 
@@ -80,13 +81,16 @@ def main(options,
 
         if options.progress and not options.verbose:
             pe(progress_line)
-            pe("\r")
-        elif options.progress or options.verbose:
-            con_stdout=None
-
-            with term_tools.TextColourInverter(): pe(progress_line)
-
             pe("\n")
+        elif options.progress or options.verbose:
+            with term_tools.TextColourInverter(): pe(progress_line)
+            pe("\n")
+
+        if options.log:
+            sys.stdout.write(cmd_line)
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+            
         r=0
         if not options.dry_run:
             r=subprocess.call(argv,
@@ -154,6 +158,13 @@ if __name__=="__main__":
                         action="store_true",
                         help=
                         """If specified, print each command line to stderr before executing.""")
+
+    parser.add_argument("-l",
+                        "--log",
+                        default=False,
+                        action="store_true",
+                        help=
+                        """If specified, print each command line to stdout before executing.""")
 
     parser.add_argument("-p",
                         dest="progress",
