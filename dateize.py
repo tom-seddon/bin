@@ -19,8 +19,8 @@ for name in names:
         continue
 
     try:
-        # The `ctime' is as good as it gets on Mac OS X.
-        ctime=time.gmtime(os.path.getctime(name))
+        # `mtime' appears to be the rigth thing on OS X.
+        ctime=time.gmtime(os.path.getmtime(name))
 
         month,year=ctime.tm_mon,ctime.tm_year
 
