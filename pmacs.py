@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import os,os.path,sys,tempfile,subprocess,argparse
 
 ##########################################################################
