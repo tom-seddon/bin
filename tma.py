@@ -1,5 +1,5 @@
-#!/usr/bin/python
-import os,os.path,sys,stat,glob,exceptions,optparse,re
+#!/usr/bin/python3
+import os,os.path,sys,stat,glob,optparse,re
 
 ##########################################################################
 #
@@ -50,10 +50,9 @@ def listdir(options,
             path):
     try:
         return os.listdir(path)
-    except exceptions.OSError,e:
+    except OSError as e:
         if not options.Q:
-            print>>sys.stderr,"%s: %s"%(path,
-                                        str(e))
+            sys.stderr.write("%s: %s\n"%(path,str(e)))
             
         return None
 
@@ -74,8 +73,7 @@ def du_h(n):
         return "%.1fG"%(n/1024.0/1024.0/1024.0)
 
 def walk_error(e):
-    print>>sys.stderr,"%s: %s"%(e.filename,
-                                str(e))
+    sys.stderr.write("%s: %s\n"%(e.filename,str(e)))
     
 def display(options,
             flag,
@@ -179,8 +177,10 @@ def tma_recurse(options,
     for new in news:
         new_full=os.path.join(new_folder,
                               new)
-        new_st=os.lstat(os.path.join(options.root,
-                                     new_full))
+        try:
+            new_st=os.lstat(os.path.join(options.root,
+                                         new_full))
+        except: new_st=None
         
         if not new in olds:
             display(options,
@@ -301,7 +301,7 @@ def main(argv):
     if not options.most_recent:
         if len(args)!=2:
             parser.print_help()
-            print>>sys.stderr,"FATAL: Must specify 2 backups."
+            sys.stderr.write("FATAL: Must specify 2 backups.\n")
             sys.exit(1)
 
         a=args[0]
@@ -315,7 +315,7 @@ def main(argv):
                 backups.append(name)
         
         if len(backups)<2:
-            print>>sys.stderr,"FATAL: Too few backups for --most-recent."
+            sys.stderr.write("FATAL: Too few backups for --most-recent.\n")
             sys.exit(1)
 
         # lexicographical sort is fine due to the naming.
@@ -359,9 +359,9 @@ def main(argv):
 
         for w in worst:
             if w is not None:
-                print "%-*s%s"%(SIZE_WIDTH,
+                print("%-*s%s"%(SIZE_WIDTH,
                                 du_h(w[1]),
-                                w[0])
+                                w[0]))
 
 if emacs:
     main(["",
