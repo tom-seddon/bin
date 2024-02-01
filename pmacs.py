@@ -26,7 +26,37 @@ def main(options):
     else: data=sys.stdin.buffer.read()
 
     temp_fname=os.path.join(tempfile.gettempdir(),"pmacs.%d.txt"%os.getpid())
-    with open(temp_fname,"wb") as f: f.write(data)
+
+    with open(temp_fname,'wb') as f:
+        if options.binary: f.write(data)
+        else:
+            linesep=bytes(os.linesep,'ascii')
+            
+            # Emacs doesn't deal with mixed line endings very well, so
+            # safest to translate everything manually.
+            begin=0
+            end=0
+            def flush():
+                nonlocal begin
+                
+                f.write(data[begin:end])
+                f.write(linesep)
+                begin=end
+            
+            while end<len(data):
+                if data[end]==10 or data[end]==13:
+                    flush()
+                    begin+=1        # skip 1-byte line ending
+                    if (begin<len(data) and
+                        data[begin]==10 or data[begin]==13 and
+                        data[begin]!=data[begin-1]):
+                        begin+=1    # skip 2-byte line ending
+                    end=begin
+                else: end+=1
+
+            flush()
+                    
+    # with open(temp_fname,"wb" if options.binary else 'wt') as f: f.write(data)
 
     if options.verbose: sys.stderr.write("saved %d byte(s) to %s\n"%(len(data),temp_fname))
 
@@ -102,6 +132,7 @@ def pmacs(argv):
     parser.add_argument('-v','--verbose',action='store_true',help='be more verbose')
     parser.add_argument('-x',action='append',default=[],dest='commands',metavar='COMMAND',help='do (in effect) M-x %(metavar)s once file is loaded and mode (if any) selected')
     parser.add_argument('-m','--mode',default=None,metavar='MODE',help='select major mode %(metavar)s-mode')
+    parser.add_argument('-b','--binary',action='store_true',help='treat output literally, without translating newlines')
 
     main(parser.parse_args(argv))
 
