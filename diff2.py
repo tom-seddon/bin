@@ -24,7 +24,9 @@ def find_files(root):
     for dname,dnames,fnames in os.walk(root):
         for fname in fnames:
             #full_fname=os.path.normpath(os.path.join(dname,fname))
-            all_fnames.append(fname)
+            all_fnames.append(os.path.relpath(os.path.join(dname,fname),
+                                              root))
+            # v('   %s\n'%all_fnames[-1])
 
     return all_fnames
 
@@ -77,6 +79,7 @@ def are_files_same(a,b):
 ##########################################################################
 
 def main(options):
+    global g_verbose
     g_verbose=options.verbose
 
     if not options.adds and not options.edits and not options.dels and not options.same:
@@ -87,11 +90,11 @@ def main(options):
 
     if options.bare:
         if int(options.adds)+int(options.edits)+int(options.dels)+int(options.same)!=1:
-            print>>sys.stderr,"FATAL: when using -b, must specify only one of -a/-d/-e/-s."
+            print("FATAL: when using -b, must specify only one of -a/-d/-e/-s.",file=sys.stderr)
             sys.exit(1)
 
     if options.diff and not options.edits:
-        print>>sys.stderr,"WARNING: --diff is a bit pointless when not showing edits."
+        print("WARNING: --diff is a bit pointless when not showing edits.",file=sys.stderr)
     
     fs_a=find_files(options.a)
     fs_a.sort()
@@ -123,7 +126,7 @@ def main(options):
                                     diff=False
                                     for diff_pattern in options.diff_pattern:
                                         if fnmatch.fnmatch(f_a_full,diff_pattern):
-                                            print '%s matches %s'%(f_a_full,diff_pattern)
+                                            print('%s matches %s'%(f_a_full,diff_pattern))
                                             diff=True
                                             break
 
