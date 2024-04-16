@@ -8,7 +8,7 @@ Most respond to =-h=.
 Anything Xcode- or iOS-related may suffer from bitrot or be now
 irrelevant.
 
-Python scripts are for use with Python 2.7, unless otherwise noted.
+Python scripts are for use with Python .7, unless otherwise noted.
 
 ** bin2cstr
 
@@ -63,14 +63,14 @@ tallies.
 
 Move files into folders according to their creation date.
 
-** diff2
+** diff2 /(Python 3)/
 
 Does a folder diff without printing out too much verbiage.
 
 Can optionally invoke =diff= on edited files, to get the verbiage
 back.
 
-** dump /(Python 2/3)/
+** dump /(Python 3)/
 
 A version of the handy =*DUMP= command from the BBC Micro.
 
@@ -102,7 +102,7 @@ network interface. Removes VPN routes for internet and LAN, and
 (optionally) reinstates them for specified address ranges
 corresponding to whichever VPN resources you need to use.
 
-** foreach /(Python 2/3)/
+** foreach /(Python 3)/
 
 Reads a list of files on stdin, one per line, and executes a command
 for each file.
@@ -208,17 +208,6 @@ XORed with 255; for ASCII text files (use =-a=), it does a rot47 on
 the 94 printable chars. (=-a= may not actually change anything, of
 course, if the file isn't really ASCII.)
 
-** p4changelist /(Windows only)/
-
-Prints contents of the specified Perforce changelist to stdout, one
-name per line. For use with =p4 -x -= or =foreach= (qv).
-
-** p4status /(Windows only)/
-
-Like p4 status, but much quicker, because it assumes read-only files
-haven't been edited. Can produce output in a format suitable for =p4
--x -= or =foreach= (qv).
-
 ** picsplit
 
 Splits an image into equally-sized tiles, possibly after removing
@@ -228,7 +217,7 @@ inaccuracies.
 
 Dependencies: PIL
 
-** pmacs /(Python 2/3)/
+** pmacs /(Python 3)/
 
 Sends stdin to emacs via =emacsclient=, so you can use emacs as the
 target of pipes.
