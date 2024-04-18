@@ -32,253 +32,390 @@ def load(path):
 ##########################################################################
 ##########################################################################
 
-# https://info-coach.fr/atari/software/FD-Soft.php
+BPB=collections.namedtuple('BPB','bps spc ressec nfats ndirs nsects media spf spt nheads nhid')
+Bootable=collections.namedtuple('Bootable','execflag ldmode ssect sectcnt ldaaddr fatbuf fname')
+# DirEntry=collections.namedtuple('DirEntry','path name attrib time scluster size')
 
-DirEntry=collections.namedtuple('DirEntry','path name attrib time scluster size')
 
-def info_cmd(options):
-    data=load(options.path)
 
-    if len(data)%512!=0:
-        fatal('not a multiple of sector length: %s'%(options.path))
+##########################################################################
+##########################################################################
 
-    def db(sector,offset):
-        assert offset>=0 and offset<512
-        i=sector*512+offset
-        return 0 if i>=len(data) else data[i]
-
-    def dw(sector,offset):
-        h=db(sector,offset+0)
-        l=db(sector,offset+1)
-        return h*256+l
-
-    def dwle(sector,offset):
-        l=db(sector,offset+0)
-        h=db(sector,offset+1)
-        return h*256+l
-
-    def dlle(sector,offset):
-        b0=db(sector,offset+0)
-        b1=db(sector,offset+1)
-        b2=db(sector,offset+2)
-        b3=db(sector,offset+3)
-
-        return b0|b1<<8|b2<<16|b3<<24
-
-    def dname(sector,offset):
-        name=''
-        for i in range(8): name+=chr(db(sector,offset+i))
-        name=name.rstrip()
-
-        ext=''
-        for i in range(3): ext+=chr(db(sector,offset+8+i))
-        ext=ext.rstrip()
-
-        if ext!='': name+='.'+ext
-        
-        return name
-
-    empty_sector=bytes(512)
-
-    def dsector(sector):
-        i=sector*512
-        if i>=len(data): return empty_sector
-        else: return data[i:i+512]
-
-    def dsectors(sector,num_sectors):
-        result=bytes()
-        for i in range(num_sectors): result+=dsector(sector+i)
-        return result
-    
-    print('Boot Sector')
-    print()
-
-    print('  Jump instruction: %02x %02x'%(db(0,0),db(0,1)))
-
+def wordb(d,i): return d[i+0]<<8|d[i+1]
+def wordl(d,i): return d[i+0]|d[i+1]<<8
+def longl(d,i): return d[i+0]|d[i+1]<<8|d[i+2]<<16|d[i+3]<<24
+def longb(d,i): return d[i+0]<<24|d[i+1]<<16|d[i+2]<<8|d[i+3]
+def fname(d,i):
     name=''
-    for i in range(6): name+=chr(db(0,2+i))
-    print('  Name: %s'%name)
+    for j in range(8): name+=chr(d[i+j])
+    name=name.rstrip()
 
-    print('  Serial: %02x %02x %02x'%(db(0,8),db(0,9),db(0,10)))
+    ext=''
+    for j in range(3): ext+=chr(d[i+8+j])
+    ext=ext.rstrip()
 
-    bps=dwle(0,0xb)
-    spc=db(0,0xd)
-    ressec=dwle(0,0xe)
-    nfats=db(0,0x10)
-    ndirs=dwle(0,0x11)
-    nsects=dwle(0,0x13)
-    media=db(0,0x15)
-    spf=dwle(0,0x16)
-    spt=dwle(0,0x18)
-    nheads=dwle(0,0x1a)
-    nhid=dwle(0,0x1c)
-    execflag=dw(0,0x1e)
-    ldmode=dw(0,0x20)
-    ssect=dwle(0,0x22)
-    sectcnt=dwle(0,0x24)
-    ldaaddr=dwle(0,0x26)
-    fatbuf=dwle(0,0x2a)
-    fname=dname(0,0x2e)
-    reserved=dw(0,0x39)
+    if ext=='': return name
+    else: return name+'.'+ext
 
-    media_types={
-        0xf8:'3.5" 1 side x 80 tracks x 9 sectors',
-    }
+##########################################################################
+##########################################################################
 
-    def sector_str(n):
-        s=n%spt
-        h=(n//spt)%nheads
-        t=(n//spt//nheads)
+class File:
+    def __init__(self,parent,data):
+        assert len(data)>=32
 
-        offset=n*bps
-        
-        return '%d (0x%x) (H%d T%d S%d) (+0x%x)'%(n,n,h,t,s,offset)
-    
-    print('  Bytes/sector: %d (0x%04x)'%(bps,bps))
-    print('  Sectors/cluster: %d (0x%02x)'%(spc,spc))
-    print('  Num reserved sectors: %d'%(ressec))
-    print('  Num FATs: %d'%(nfats))
-    print('  Max root entries: %d'%(ndirs))
-    root_dir_size_bytes=ndirs*32
-    print('    (Root dir size: %d (0x%x))'%(root_dir_size_bytes,root_dir_size_bytes))
-    if root_dir_size_bytes%bps!=0:
-        print('    WARNING: root dir size not a multiple of sector size')
-    print('  Total sectors: %d (0x%04x)'%(nsects,nsects))
-    print('  Media descriptor: %d (0x%02x)'%(media,media))
-    if media in media_types: print('    %s'%media_types[media])
-    print('  Sectors/FAT: %d (0x%02x)'%(spf,spf))
-    print('  Sectors/track: %d'%(spt))
-    print('  Heads: %d'%(nheads))
-    print('  Num hidden sectors: %d'%(nhid))
-    print('  cmdload: 0x%04x'%execflag)
-    print('  load mode: %s'%('fname' if ldmode==0 else 'sectors'))
-    print('  start sector: %s'%sector_str(ssect))
-    print('  num sectors: %d'%(sectcnt))
-    print('  load address: 0x%04x'%ldaaddr)
-    print('  FAT buffer: 0x%04x'%fatbuf)
-    print('  Boot fname: %s'%fname)
+        self.name=fname(data,0)
+        self.parent=parent
+        self.path=os.path.join(self.parent,self.name)
 
-    print('  Checksum offset: 0x%04x'%dw(0,510))
-    
-    checksum=0
-    for i in range(512,2): checksum+=dw(0,i)
-    print('  Checksum: $%04x'%checksum)
+        ftime=wordl(data,22)
+        fdate=wordl(data,24)
+        self.time=time.struct_time(((fdate>>9&127)+1980, # tm_year
+                                    fdate>>5&15,         # tm_mon
+                                    fdate&31,            # tm_day
+                                    ftime>>11&31,        # tm_hour
+                                    ftime>>5&63,         # tm_min
+                                    (ftime&31)*0,        # tm_sec
+                                    0,                   # tm_wday
+                                    1,                   # tm_yday
+                                    -1))                 # tm_isdst
+        self.attrib=data[11]
+        self.scluster=wordl(data,26)
+        self.size=longl(data,28)
+        self.data=None
 
-    print()
-    print('Disk Layout')
-    print()
-    
-    fat0_sector=ressec
-    fat1_sector=fat0_sector+spf
-    root_sector=fat1_sector+spf
-    print('  FAT0 sector: %s'%sector_str(fat0_sector))
-    print('  FAT1 sector: %s'%sector_str(fat1_sector))
+    @property
+    def is_readonly(self): return self._attr(0x01)
 
-    fat0_data=dsectors(fat0_sector,spf)
-    fat1_data=dsectors(fat1_sector,spf)
-    if fat0_data==fat1_data: print('  FATs match')
-    else: print('  WARNING: FATs do not match')
+    @property
+    def is_hidden(self): return self._attr(0x02)
 
-    fat0_word0=fat0_data[0]|fat0_data[1]<<8
-    print('  FAT entry 0: $%03x'%(fat0_word0&0xfff))
-    print('  FAT entry 1: $%03x'%(fat0_word0>>12&0xfff))
-    
-    print('  Root dir sector: %s'%sector_str(root_sector))
+    @property
+    def is_system(self): return self._attr(0x04)
 
-    first_cluster_sector=root_sector+(root_dir_size_bytes//(bps*spc))
+    @property
+    def is_label(self): return self._attr(0x08)
 
-    print()
-    print('Files')
-    print()
+    @property
+    def is_dir(self): return self._attr(0x10)
 
-    def file_data(scluster):
-        data=bytes()
+    def _attr(self,mask): return (self.attrib&mask)!=0
+
+##########################################################################
+##########################################################################
+
+class Disk:
+    def __init__(self,data):
+        self._data=data
+
+        if len(self._data)<512: raise RuntimeError('disk image too small for boot sector')
+
+        self._oem=self._data[2:8]
+        self._serial=longl(self._data,8)
+        self._bpb=BPB(bps=wordl(self._data,0xb),
+                      spc=self._data[0xd],
+                      ressec=wordl(self._data,0xe),
+                      nfats=self._data[0x10],
+                      ndirs=wordl(self._data,0x11),
+                      nsects=wordl(self._data,0x13),
+                      media=self._data[0x15],
+                      spf=wordl(self._data,0x16),
+                      spt=wordl(self._data,0x18),
+                      nheads=wordl(self._data,0x1a),
+                      nhid=wordl(self._data,0x1c))
+        sum=0
+        for i in range(0,512,2): sum+=wordb(self._data,i)
+        if self._oem==b'Loader' and sum==0x1234:
+            self._bootable=Bootable(execflag=wordb(self._data,0x1e),
+                                    ldmode=wordb(self._data,0x20),
+                                    ssect=wordl(self._data,0x22),
+                                    sectcnt=wordl(self._data,0x24),
+                                    ldaaddr=wordl(self._data,0x26),
+                                    # 0x28?
+                                    fatbuf=wordl(self._data,0x2a),
+                                    fname=fname(self._data,0x2e))
+        else: self._bootable=None
+
+        if self._bpb.bps!=512:
+            raise RuntimeError('disk image has unsupported bytes/sector: %d'%(self._bpb.bps))
+
+        root_dir_size_bytes=self._bpb.ndirs*32
+        if root_dir_size_bytes%self._bpb.bps!=0:
+            raise RuntimeError('root dir size (%d; 0x%x) not a multiple of sector size (%d; 0x%x)'%(root_dir_size_bytes,root_dir_size_bytes,self._bpb.bps,self._bpb.bps))
+        self._root_dir_size_sectors=root_dir_size_bytes//self._bpb.bps
+
+        if (self._bpb.ressec+self._bpb.nfats*self._bpb.spf)*self._bpb.bps>len(self._data):
+            raise RuntimeError('disk image too small for FATs')
+
+        self._fats=[]
+        for i in range(self._bpb.nfats):
+            begin=self._bpb.ressec+i*self._bpb.spf
+            end=begin+self._bpb.spf
+            self._fats.append(self._data[begin*self._bpb.bps:
+                                         end*self._bpb.bps])
+
+        self._fat=[]
+        for i in range(0,len(self._fats[0])//3*3,3):
+            value=(self._fats[0][i]|
+                   self._fats[0][i+1]<<8|
+                   self._fats[0][i+2]<<16)
+            self._fat.append(value&0xfff)
+            self._fat.append(value>>12)
+
+        # print(self._fat)
+        # print(len(self._fat))
+
+        self._root_dir_sector=self._bpb.ressec+self._bpb.nfats*self._bpb.spf
+        self._first_cluster_sector=self._root_dir_sector+self._root_dir_size_sectors
+        # first usable cluster must be index 2...
+        self._first_cluster_sector-=2*self._bpb.spc
+        #print(f'fcs: {self._first_cluster_sector}')
+
+        self._files=None
+
+    @property
+    def bpb(self): return self._bpb
+
+    @property
+    def bootable(self): return self._bootable
+
+    @property
+    def fats(self): return self._fats
+
+    # def fat_value(self,index):
+    #     print(index)
+    #     offset=(index>>1)*3
+    #     value=(self._fats[0][offset]|
+    #            self._fats[0][offset+1]<<8|
+    #            self._fats[0][offset+2]<<16)
+    #     if index&1: return value>>12
+    #     else: return value&0xfff
+
+    def root_dir_data(self):
+        begin=self._bpb.ressec+self._bpb.nfats*self._bpb.spf
+        end=begin+self._root_dir_size_sectors
+        return self._data[begin*self._bpb.bps:end*self._bpb.bps]
+
+    def file_clusters(self,scluster):
+        seen_clusters=set()
+        clusters=[]
         cluster=scluster
         while cluster<0xff0:
-            sector=first_cluster_sector+cluster*spc
-            print('sector=%d offset=0x%04x'%(sector,sector*512))
-            # print('cluster=%d (+0x%x)'%(cluster,
-            #                             (first_cluster_sector*spc)*bps))
-            for i in range(spc): data+=dsector(sector+i)
-            
-            fat_offset=(cluster>>1)*3
-            fat_pair=(fat0_data[fat_offset]|
-                      fat0_data[fat_offset+1]<<8|
-                      fat0_data[fat_offset+2]<<16)
-            if cluster&1: fat_pair>>=12
-            else: fat_pair&=0xfff
+            if cluster in seen_clusters: raise RuntimeError('loop in FAT')
+            seen_clusters.add(cluster)
+            clusters.append(cluster)
+            cluster=self._fat[cluster]
 
-            cluster=fat_pair
+        return clusters
+
+    def _file_data(self,scluster):
+        data=bytes()
+
+        for cluster in self.file_clusters(scluster):
+            sector=self._first_cluster_sector+cluster*self._bpb.spc
+            begin=sector*self._bpb.bps
+            end=begin+self._bpb.spc*self._bpb.bps
+            data+=self._data[begin:end]
 
         return data
+        
+        # cluster=scluster
+        # while cluster<0xff0:
+        #     sector=self._first_cluster_sector+cluster*self._bpb.spc
+        #     begin=sector*self._bpb.bps
+        #     end=begin+self._bpb.spc*self._bpb.bps
+        #     #print(f'  cluster: {cluster}; range={hex(begin)} to {hex(end)}')
+        #     data+=self._data[begin:end]
 
-    def recurse(dir,path,files):
-        print('Processing: %s'%path)
-        subdirs=[]
-        offset=0
-        while offset<len(dir):
-            if dir[offset+0]==0:
-                # end of table
-                break
-            elif dir[offset+0]==0xe5:
-                # deleted entry
-                offset+=32
-                continue
+        #     cluster=self._fat[cluster]
 
-            name=''
-            for i in range(8): name+=chr(dir[offset+0+i])
-            name=name.rstrip()
+        # return data
 
-            ext=''
-            for i in range(3): ext+=chr(dir[offset+8+i])
-            ext=ext.rstrip()
+    @property
+    def files(self):
+        if self._files is None:
+            files=[]
+            
+            def recurse(dir,path):
+                subdirs=[]
+                offset=0
+                index=len(files)
+                
+                for offset in range(0,len(dir),32):
+                    if dir[offset+0]==0: break # end of table
+                    elif dir[offset+0]==0xe5: continue # deleted entry
 
-            if ext!='': name+='.'+ext
+                    file=File(path,dir[offset+0:offset+32])
+                    if file.name=='.' or file.name=='..': continue
 
-            ftime=dir[offset+22]|dir[offset+23]<<8
-            fdate=dir[offset+24]|dir[offset+25]<<8
+                    if not file.is_label:
+                        file.data=self._file_data(file.scluster)
 
-            time_struct=time.struct_time(((fdate>>9&127)+1980, # tm_year
-                                          fdate>>5&15,         # tm_mon
-                                          fdate&31,            # tm_day
-                                          ftime>>11&31,        # tm_hour
-                                          ftime>>5&63,         # tm_min
-                                          (ftime&31)*0,        # tm_sec
-                                          0,                   # tm_wday
-                                          1,                   # tm_yday
-                                          -1))                 # tm_isdst
+                        if not file.is_dir:
+                            file.data=file.data[:file.size]
 
-            entry=DirEntry(path=path,
-                           name=name,
-                           attrib=dir[offset+11],
-                           time=time.mktime(time_struct),
-                           scluster=dir[offset+26]|dir[offset+27]<<8,
-                           size=(dir[offset+28]|
-                                 dir[offset+29]<<8|
-                                 dir[offset+30]<<16|
-                                 dir[offset+31]<<24))
+                    files.append(file)
 
-            if entry.attrib&0x10:
-                if entry.name=='.' or entry.name=='..': pass
-                else: subdirs.append(entry)
-            elif entry.attrib&0x08: pass
-            else: files.append(entry)
+                for i in range(index,len(files)):
+                    if files[i].is_dir:
+                        recurse(files[i].data,
+                                os.path.join(path,files[i].name))
 
-            offset+=32
+            recurse(self.root_dir_data(),'')
+            self._files=files
 
-        for subdir in subdirs:
-            print(subdir)
-            recurse(file_data(subdir.scluster),
-                    os.path.join(path,subdir.name),
-                    files)
+        return self._files
 
-    files=[]
-    recurse(dsectors(root_sector,root_dir_size_bytes//bps),
-            '',
-            files)
+##########################################################################
+##########################################################################
 
-    print(files)
+# https://info-coach.fr/atari/software/FD-Soft.php
 
+def info2_cmd(options):
+    disk=Disk(load(options.path))
+
+    def sector_str(n):
+        s=n%disk.bpb.spt
+        h=(n//disk.bpb.spt)%disk.bpb.nheads
+        t=(n//disk.bpb.spt//disk.bpb.nheads)
+
+        offset=n*disk.bpb.bps
+        
+        return '%d (0x%x) (H%d T%d S%d) (+0x%x)'%(n,n,h,t,s,offset)
+
+    print('BPB')
+    print()
+    print(f'  Bytes/sector: {disk.bpb.bps} ({hex(disk.bpb.bps)})')
+    print(f'  Sectors/cluster: {disk.bpb.spc} ({hex(disk.bpb.spc)})')
+    print(f'  Num reserved sectors: {disk.bpb.ressec}')
+    print(f'  Num FATs: {disk.bpb.nfats}')
+    print(f'  Max root entries: {disk.bpb.ndirs}')
+    print(f'  Total sectors: {disk.bpb.nsects} ({hex(disk.bpb.nsects)})')
+    print(f'  Media descriptor: {disk.bpb.media} ({hex(disk.bpb.media)})')
+    print(f'  Sectors/FAT: {disk.bpb.spf} ({hex(disk.bpb.spf)})')
+    print(f'  Sectors/track: {disk.bpb.spt}')
+    print(f'  Heads: {disk.bpb.nheads}')
+    print(f'  Num hidden sectors: {disk.bpb.nhid}')
+    print()
+
+    print('Bootable')
+    print()
+    if disk.bootable is None: print('  Boot sector not bootable')
+    else:
+        print(f'  execflag: {hex(disk.bootable.execflag)}')
+        print(f'  ldmode: {hex(disk.bootable.ldmode)}')
+        if disk.bootable.ldmode!=0:
+            print(f'  ssect: {sector_str(disk.bootable.ssect)}')
+            print(f'  sectcnt: {disk.bootable.sectcnt}')
+        else:
+            print(f'  ldaaddr: {hex(disk.bootable.ldaaddr)}')
+            print(f'  fatbuf: {hex(disk.bootable.fatbuf)}')
+            print(f'  fname: {disk.bootable.fname})')
+    print()
+
+    print('FAT/Root dir')
+    print()
+    fats_match=True
+    for i in range(disk.bpb.nfats):
+        print(f'  FAT %d sector: %s'%(i,disk.bpb.ressec+i*disk.bpb.spf))
+        if disk.fats[i]!=disk.fats[0]: fats_match=False
+
+    if fats_match: print('  All FATs match')
+    else: print('  WARNING: FATs do not all match')
+
+    print(f'  Root dir sector: {sector_str(disk._root_dir_sector)}')
+    print(f'  Cluster 0 sector: {sector_str(disk._first_cluster_sector)}')
+
+##########################################################################
+##########################################################################
+
+def files_cmd(options):
+    disk=Disk(load(options.path))
+
+    for file in disk.files:
+        if file.is_dir: size_str='<<DIR>>'
+        elif file.is_label: size_str='<<LABEL>>'
+        else: size_str='{:,}'.format(file.size)
+
+        # 
+        time_str=time.strftime('%Y-%m-%d %H:%M:%S',file.time)
+
+        attr_str=(('R' if file.is_readonly else '_')+
+                  ('H' if file.is_hidden else '_')+
+                  ('S' if file.is_system else '_'))
+        
+        print('%13s  %-19s  %-3s  %s'%(size_str,
+                                       time_str,
+                                       attr_str,
+                                       file.path))
+
+##########################################################################
+##########################################################################
+
+def extract_cmd(options):
+    disk=Disk(load(options.src_path))
+
+    if options.dest_path is not None:
+        for file in disk.files:
+            dest_path=os.path.join(options.dest_path,file.path)
+            if file.is_label:
+                pass
+            elif file.is_dir:
+                if not os.path.isdir(dest_path):
+                    os.makedirs(dest_path)
+            else:
+                with open(dest_path,'wb') as f: f.write(file.data)    
+
+##########################################################################
+##########################################################################
+
+def chkdsk_cmd(options):
+    disk=Disk(load(options.path))
+
+    def warn(msg): sys.stderr.write(f'{msg}\n')
+
+    # check file attributes.
+    for file in disk.files:
+        if (file.attrib&~0x3f)!=0:
+            warn(f'file has invalid attributes (0x%x): %s'%(file.attrib,
+                                                            file.path))
+
+    # check labels.
+    found_label=False
+    for file in disk.files:
+        if file.is_label:
+            if file.parent=='':
+                if found_label: warn('disk has multiple labels')
+                else: found_label=True
+            else:
+                warn(f'found label outside root dir: {file.path}')
+
+    cluster_map={}
+    for file in disk.files:
+        for cluster in disk.file_clusters(file.scluster):
+            cluster_map.setdefault(cluster,[]).append(file)
+
+    for cluster,files in cluster_map.items():
+        if len(files)>1:
+            warn('cluster %d (0x%x) is multiply linked:'%(cluster,cluster))
+            for file in files: print('  %s'%file.path)
+
+    # # validate FAT.
+    # num_clusters=disk.bpb.nsects-(disk.bpb.ressec+
+    #                               disk.bpb.nfats*disk.bpb.spf+
+    #                               disk._root_dir_size_sectors)
+    
+    # for fat_idx,fat in enumerate(disk._fats):
+    #     for cluster_idx,cluster in enumerate(fat):
+    #         if (cluster==0 or
+    #             cluster==1 or
+    #             cluster>=0xff0 and cluster<=0xff7):
+    #             warn('FAT %d cluster %d: invalid value: %d (0x%x)'%
+    #                  (fat_idx,cluster_idx,cluster,cluster))
+    #         elif cluster>=num_clusters+2:
+    #             warn('FAT %d cluster %d: out of range value: %d (0x%x)'%
+    #                  (fat_idx,cluster_idx,cluster,cluster))
+                
 ##########################################################################
 ##########################################################################
 
@@ -298,9 +435,22 @@ def main(argv):
 
     subparsers=parser.add_subparsers()
 
+    chkdsk_parser=subparsers.add_parser('chkdsk',help='''validate disk''')
+    chkdsk_parser.add_argument('path',metavar='FILE',help='''load disk from %(metavar)s''')
+    chkdsk_parser.set_defaults(fun=chkdsk_cmd)
+
+    extract_parser=subparsers.add_parser('extract',help='''extract files into folder''')
+    extract_parser.add_argument('-o',dest='dest_path',metavar='FOLDER',help='''write file(s) to %(metavar)s, creating folder structure as necessary''')
+    extract_parser.add_argument('src_path',metavar='FILE',help='''load disk from %(metavar)s''')
+    extract_parser.set_defaults(fun=extract_cmd)
+
+    files_parser=subparsers.add_parser('files',help='''list all files on disk''')
+    files_parser.add_argument('path',metavar='FILE',help='''load disk from %(metavar)s''')
+    files_parser.set_defaults(fun=files_cmd)
+
     info_parser=subparsers.add_parser('info',help='''show disk info''')
     info_parser.add_argument('path',metavar='FILE',help='''load disk from %(metavar)s''')
-    info_parser.set_defaults(fun=info_cmd)
+    info_parser.set_defaults(fun=info2_cmd)
 
     options=parser.parse_args(argv)
     if options.fun is None:
