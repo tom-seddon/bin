@@ -357,7 +357,9 @@ def extract_cmd(options):
 
     if options.dest_path is not None:
         for file in disk.files:
-            dest_path=os.path.join(options.dest_path,file.path)
+            file_path=file.path
+            if options.tolower: file_path=file_path.lower()
+            dest_path=os.path.join(options.dest_path,file_path)
             if file.is_label:
                 pass
             elif file.is_dir:
@@ -441,6 +443,7 @@ def main(argv):
 
     extract_parser=subparsers.add_parser('extract',help='''extract files into folder''')
     extract_parser.add_argument('-o',dest='dest_path',metavar='FOLDER',help='''write file(s) to %(metavar)s, creating folder structure as necessary''')
+    extract_parser.add_argument('--tolower',action='store_true',help='''make all file names lower case''')
     extract_parser.add_argument('src_path',metavar='FILE',help='''load disk from %(metavar)s''')
     extract_parser.set_defaults(fun=extract_cmd)
 
