@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/python3
 import sys,os,os.path,argparse,struct
 emacs=os.getenv("EMACS") is not None
 
@@ -42,7 +42,7 @@ def main(options):
     global emacs
     if options.not_emacs: emacs=False
 
-    with open(options.input_fname,"rb") as f: data=[ord(x) for x in f.read()]
+    with open(options.input_fname,"rb") as f: data=list(f.read())
     v("%s: %d bytes\n"%(options.input_fname,len(data)))
 
     if data[0]!=0x60 or data[1]!=0x1A: fatal("file doesn't start with GEMDOS magic number")
@@ -67,7 +67,7 @@ def main(options):
 
     # Do the TEXT and DATA relocations.
     offset=getl(data,rel_offset)
-    if offset==0: print>>sys.stderr,"NOTE: No fixups in file."
+    if offset==0: sys.stderr.write('NOTE: No fixups in file.\n')
     else:
         num_relocated=0
         i=rel_offset+4
@@ -91,11 +91,15 @@ def main(options):
     # Strip off symbols and relocation table.
     data=data[:syms_offset]
 
-    # Add in a BSS.
-    data+=[0]*bss_size
+    # Strip off header.
+    data=data[text_offset:]
 
-    with open(options.output_fname,"wb") as f: f.write("".join([chr(x) for x in data]))
-    v("%s: %d bytes at 0x%08X\n"%(options.output_fname,len(data),options.address))
+    # Add in a BSS.
+    data+=bytes(bss_size)
+
+    if options.output_fname is not None:
+        with open(options.output_fname,"wb") as f: f.write(bytes(data))
+        v("%s: %d bytes at 0x%08X\n"%(options.output_fname,len(data),options.address))
     
 ##########################################################################
 ##########################################################################
@@ -117,10 +121,9 @@ if __name__=="__main__":
 
     parser.add_argument("-a",
                         "--address",
-                        nargs=1,
                         type=auto_int,
                         default=0x20000,
-                        help="address to relocate to (default: %(default)X)")
+                        help="address to relocate to (default: 0x%(default)X)")
 
     parser.add_argument("-o",
                         "--output-file",
