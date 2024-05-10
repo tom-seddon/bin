@@ -241,6 +241,11 @@ Extract files from Atari ST trackwise floppy disk images.
 (May also be suitable for DOS disks, which have a very similar format,
 but that's untested.)
 
+** strom
+
+Split Atari ST ROM images into banks, for programming into multiple
+PROMs. Also verify ROM checksums present in TOS 2.06+.
+
 ** svnsync_remote /(OS X/Unix only)/
 
 Does an =svnsync= from a remote repo.
