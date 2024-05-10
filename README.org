@@ -234,6 +234,13 @@ program in, relocates it, puts the zero-filled BSS in the right place,
 then saves the result. Have your disassembler start from the first
 byte (which is the usual =BRA *+$1E=).
 
+** stdisk
+
+Extract files from Atari ST trackwise floppy disk images.
+
+(May also be suitable for DOS disks, which have a very similar format,
+but that's untested.)
+
 ** svnsync_remote /(OS X/Unix only)/
 
 Does an =svnsync= from a remote repo.
