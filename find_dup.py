@@ -86,7 +86,7 @@ def main(options):
                         filekeys_by_size.setdefault(s.st_size,[]).append(filekey)
 
     # remove anything uninteresting...
-    for size,filekeys in filekeys_by_size.items():
+    for size,filekeys in [item for item in filekeys_by_size.items()]:
         if len(filekeys)==1:
             del filekeys_by_size[size]
         elif size*len(filekeys)<options.min_size:
