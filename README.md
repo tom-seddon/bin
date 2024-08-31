@@ -74,7 +74,7 @@ categories. Find branches merged into another branch - candidates for
 deletion. Find branches not merged into another branch - candidates
 for force deletion, or possible recategorization.
 
-## change_ext /(Python 2)/
+## change_ext *(Python 2)*
 
 Batch change of file extensions.
 
@@ -88,12 +88,12 @@ numbers printed.
     > p4 sync -N ... | commas
     Server network estimates: files added/updated/deleted=3,913/1,635/0, bytes added/updated=1,593,990,200/1,166,508,036
 
-## count /(Python 2)/
+## count *(Python 2)*
 
 Counts occurrences of contents of lines on stdin, and prints the
 tallies.
 
-## dateize /(Python 2)/
+## dateize *(Python 2)*
 
 Move files into folders according to their creation date.
 
@@ -126,14 +126,14 @@ of tools, particularly on Windows.)
 Makes up a random password that can be copied from iTerm2 with one
 double-click.
 
-## modify /(Python 2)/
+## modify *(Python 2)*
 
 Modifies a file by changing every byte. For binary files, each byte is
 XORed with 255; for ASCII text files (use `-a`), it does a rot47 on
 the 94 printable chars. (`-a` may not actually change anything, of
 course, if the file isn't really ASCII.)
 
-## picsplit /(Python 2)/
+## picsplit *(Python 2)*
 
 Splits an image into equally-sized tiles, possibly after removing
 border regions based on alpha channel. The tiles can optionally be
@@ -153,7 +153,7 @@ If using recentf, add the following to your `.emacs`:
 
 # WAV/MP3 Stuff
 
-## compress_wavs /(Python 2)/
+## compress_wavs *(Python 2)*
 
 Batch convert WAVs and FLACs to MP3s. Useful for devices that have
 limited storage, don't support FLAC, etc.
@@ -163,7 +163,7 @@ compatible with all the playback devices I use.)
 
 Dependencies: lame, flac tools (if converting FLACs), GNU make
 
-## find_mp3_residue /(Python 2)/
+## find_mp3_residue *(Python 2)*
 
 Find MP3 "residue" (a poor choice of terminology, sorry!) - the
 difference between the signal in the original WAV and the signal in
@@ -180,14 +180,14 @@ Inspired by: http://ryanmaguiremusic.com/theghostinthemp3.html
 Dependencies: GNU make, mpg123, lame, rm, flac (only needed if you use
 a flac file as input)
 
-## make_looping_mp3 /(Python 2)/
+## make_looping_mp3 *(Python 2)*
 
 Makes a seamlessly-looping MP3 from a WAV file. Requires LAME
 (http://lame.sourceforge.net/).
 
 For the principle, see http://www.compuphase.com/mp3/mp3loops.htm.
 
-## wavdump /(Python 2)/
+## wavdump *(Python 2)*
 
 Lists WAV file chunks. Pretty-prints chunks it knows about.
 
@@ -196,7 +196,7 @@ Lists WAV file chunks. Pretty-prints chunks it knows about.
 I haven't done any iOS stuff for years. This stuff probably no longer
 works.
 
-## improve-xcode-asm-output /(Python 2)/
+## improve-xcode-asm-output *(Python 2)*
 
 Takes asm output from Xcode on stdin, and prints it to stdout, only
 with `.loc` directives replaced with the actual lines from the
@@ -212,7 +212,7 @@ through `improve-xcode-asm-output`, e.g.:
 
     pbpaste | ./improve-xcode-asm-output.py
 
-## iosids /(Python 2)/
+## iosids *(Python 2)*
 
 Helper script for importing device IDs en masse into the developer
 portal without endless "this devices already exists" errors.
@@ -237,7 +237,7 @@ How to use:
 4. Use the Upload Devices button in the Provisioning Portal to bulk
    add the new devices. Point it at the text file created in step 3.
 
-## symcrash /(Python 2)/
+## symcrash *(Python 2)*
 
 Symbolicates a crash log from the iPhone. Apple supply a perl script
 to do this, but it relies on spotlight having indexed the dSYM folders
@@ -310,7 +310,7 @@ Intended workflow:
 
 # macOS Stuff
 
-## svnsync_remote /(Python 2)/
+## svnsync_remote *(Python 2)*
 
 Does an `svnsync` from a remote repo.
 
@@ -351,13 +351,13 @@ https://github.com/erocarrera/pefile
 Written with the intent of being useful, but, for now, at your own
 risk...
 
-## dmp_modules /(Windows only)/ /(Python 2)/
+## dmp_modules *(Windows only)* *(Python 2)*
 
 Invokes
 [`cdb`](https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-download-tools)
 to print a list of the modules in a Windows .dmp file.
 
-## find_exe_or_pdb /(Python 2)/
+## find_exe_or_pdb *(Python 2)*
 
 Finds a Windows .exe or .pdb by embedded timestamp in a folder
 structure. This is the info used to find the .pdb that matches a .exe;
@@ -366,14 +366,14 @@ when you have one of the pair, this might help you find the other.
 For a bit more about this, see
 http://www.debuginfo.com/articles/debuginfomatch.html
 
-## pdb_info /(Python 2)/
+## pdb_info *(Python 2)*
 
 Print some info about a .pdb file.
 
 For an overview of the pdb format, see
 https://llvm.org/docs/PDB/MsfFile.html
 
-## pe_header /(Python 2)/
+## pe_header *(Python 2)*
 
 Print some stuff - though not much, at least yet - from an EXE header.
 
