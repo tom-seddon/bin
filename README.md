@@ -12,12 +12,12 @@ Licence is GPL unless otherwise specified.
 ## bin2cstr *(Python 2)*
 
 Convert a binary file into a list of C-style strings. You can paste
-the result into a Python or C program, copy it to a file and #include
+the result into a Python or C program, copy it to a file and `#include`
 it into a C program, and so on.
 
-Specify -, to have a comma after each line of input, giving you an
-array of strings, one per line; specify -n - probably most useful in
-conjunction with -, - to leave the newlines out of the strings.
+Specify `-,` to have a comma after each line of input, giving you an
+array of strings, one per line; specify `-n` - probably most useful in
+conjunction with `-,` - to leave the newlines out of the strings.
 
 List files to process on the command line, or specify no files to have
 it read stdin.
@@ -106,7 +106,7 @@ back.
 
 ## dump
 
-A version of the handy `#DUMP` command from the BBC Micro.
+A version of the handy `*DUMP` command from the BBC Micro.
 
 ## find_dup
 
@@ -232,7 +232,7 @@ How to use:
    provisioning portal. Redirect the output to a .txt file, since
    you'll need it in the next step:
 
-    ./iosids.py /tmp/Devices\ -\ iOS\ Provisioning\ Portal\ -\ Apple\ Developer.html ~/Downloads/testflight_devices.txt > /tmp/devices.txt
+       ./iosids.py /tmp/Devices\ -\ iOS\ Provisioning\ Portal\ -\ Apple\ Developer.html ~/Downloads/testflight_devices.txt > /tmp/devices.txt
 
 4. Use the Upload Devices button in the Provisioning Portal to bulk
    add the new devices. Point it at the text file created in step 3.
