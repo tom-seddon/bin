@@ -17,5 +17,5 @@ while num_bits_left>0:
     value>>=6
     num_bits_left-=6
 
-print passwd
+print(passwd)
 
