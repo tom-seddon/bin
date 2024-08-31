@@ -9,7 +9,7 @@ Licence is GPL unless otherwise specified.
 
 # C/C++ Stuff
 
-## bin2cstr /(Python 2)/
+## bin2cstr *(Python 2)*
 
 Convert a binary file into a list of C-style strings. You can paste
 the result into a Python or C program, copy it to a file and #include
