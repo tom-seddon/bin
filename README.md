@@ -108,6 +108,14 @@ back.
 
 A version of the handy `*DUMP` command from the BBC Micro.
 
+## eols
+
+Look for apparent text file line endings (CR+LF, LF+CR, CR, LF) and
+print the number of each type found. If the lines aren't all
+consistent (seemingly the usual cause of git thinking the entire file
+has changed), use one of the appropriate command line options - see
+`-h` output - to print the line numbers of a given type.
+
 ## find_dup
 
 Find duplicate files.
