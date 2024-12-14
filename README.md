@@ -187,7 +187,7 @@ Makes a seamlessly-looping MP3 from a WAV file. Requires LAME
 
 For the principle, see http://www.compuphase.com/mp3/mp3loops.htm.
 
-## wavdump *(Python 2)*
+## wavdump
 
 Lists WAV file chunks. Pretty-prints chunks it knows about.
 

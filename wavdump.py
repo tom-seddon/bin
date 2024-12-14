@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import sys,argparse,collections
 
 # http://www.sonicspot.com/guide/wavefiles.html
@@ -16,13 +16,13 @@ def v(str):
         sys.stdout.write(str)
 
 def get4s(s,i):
-    return s[i:i+4]
+    return s[i:i+4].decode('ascii')
 
 def getnu(s,i,n):
     value=0
 
     for j in range(n):
-        value|=ord(s[i+j])<<(j*8)
+        value|=s[i+j]<<(j*8)
 
     return value
 
@@ -100,7 +100,7 @@ g_format=None
 def dump_fmt(fmt):
     sys.stdout.write("    wFormatTag=")
 
-    if wave_format_tag_names.has_key(g_format.wFormatTag):
+    if g_format.wFormatTag in wave_format_tag_names:
         sys.stdout.write("%s (%d, 0x%X)\n"%(wave_format_tag_names[g_format.wFormatTag],
                                             g_format.wFormatTag,
                                             g_format.wFormatTag))
@@ -132,18 +132,18 @@ def dump_smpl(smpl):
     num_sample_loops=get4u(smpl.data,28)
     sampler_data=get4u(smpl.data,32)
 
-    print "    manufacturer=%d"%manufacturer
-    print "    product=%d"%product
-    print "    sample_period=%d"%sample_period
-    print "    midi_unity_note=%d"%midi_unity_note
-    print "    midi_pitch_fraction=%d"%midi_pitch_fraction
-    print "    smpte_format=%d"%smpte_format
-    print "    smpte_offset=%d"%smpte_offset
-    print "    num_sample_loops=%d"%num_sample_loops
-    print "    sampler_data=%d"%sampler_data
+    print("    manufacturer=%d"%manufacturer)
+    print("    product=%d"%product)
+    print("    sample_period=%d"%sample_period)
+    print("    midi_unity_note=%d"%midi_unity_note)
+    print("    midi_pitch_fraction=%d"%midi_pitch_fraction)
+    print("    smpte_format=%d"%smpte_format)
+    print("    smpte_offset=%d"%smpte_offset)
+    print("    num_sample_loops=%d"%num_sample_loops)
+    print("    sampler_data=%d"%sampler_data)
 
     for loop in range(num_sample_loops):
-        print "    loop %d/%d:"%(loop+1,num_sample_loops)
+        print("    loop %d/%d:"%(loop+1,num_sample_loops))
 
         cue_point_id=get4u(smpl.data,36+loop*24+0)
         type=get4u(smpl.data,36+loop*24+4)
@@ -152,12 +152,12 @@ def dump_smpl(smpl):
         fraction=get4u(smpl.data,36+loop*24+16)
         play_count=get4u(smpl.data,36+loop*24+20)
 
-        print "       cue_point_id=%d"%cue_point_id
-        print "       type=%d"%type
-        print "       start=%d"%start
-        print "       end=%d"%end
-        print "       fraction=%d"%fraction
-        print "       play_count=%d"%play_count
+        print("       cue_point_id=%d"%cue_point_id)
+        print("       type=%d"%type)
+        print("       start=%d"%start)
+        print("       end=%d"%end)
+        print("       fraction=%d"%fraction)
+        print("       play_count=%d"%play_count)
 
 ##########################################################################
 ##########################################################################
@@ -170,10 +170,10 @@ def dump_list(chunk):
 ##########################################################################
 
 def print_table_filler(widths,prefix):
-    print prefix+"+-"+"-+-".join(["-"*width for width in widths])+"-+"
+    print(prefix+"+-"+"-+-".join(["-"*width for width in widths])+"-+")
         
 def print_table_row(columns,widths,prefix):
-    print prefix+"| "+" | ".join(["%-*s"%(widths[i],columns[i]) for i in range(len(widths))])+" |"
+    print(prefix+"| "+" | ".join(["%-*s"%(widths[i],columns[i]) for i in range(len(widths))])+" |")
         
 ##########################################################################
 ##########################################################################
@@ -282,7 +282,7 @@ def main(args):
                 seconds=int(total_seconds)%60
                 ms=int(total_seconds*1000)%1000
                 
-                print "%s: %d'%d\"%03d"%(args.wav_file,minutes,seconds,ms)
+                print("%s: %d'%d\"%03d"%(args.wav_file,minutes,seconds,ms))
     else:
         for chunk_idx in range(len(chunks)):
             chunk=chunks[chunk_idx]
