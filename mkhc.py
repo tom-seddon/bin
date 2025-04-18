@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import sys,os.path,argparse,os,subprocess,uuid,collections
 
 ##########################################################################
@@ -257,7 +257,7 @@ def main(options):
             for fname in [o.h,o.inl,o.src]:
                 if fname is None: continue
                 if os.path.isfile(fname):
-                    print>>sys.stderr,"FATAL: file exists: %s"%fname
+                    sys.stderr.write('FATAL: file exists: %s\n'%fname)
                     good=False
 
         outputs.append(o)
