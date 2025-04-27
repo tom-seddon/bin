@@ -159,7 +159,7 @@ If using recentf, add the following to your `.emacs`:
 
     (add-to-list 'recentf-exclude "pmacs\\.[0-9]+\\.dat$")
 
-# WAV/MP3 Stuff
+# Audio/Video Stuff
 
 ## compress_wavs *(Python 2)*
 
@@ -198,6 +198,18 @@ For the principle, see http://www.compuphase.com/mp3/mp3loops.htm.
 ## wavdump
 
 Lists WAV file chunks. Pretty-prints chunks it knows about.
+
+## make_video
+
+Uses ffmpeg to create a video file from a sequence of image files and
+WAV files. Specific options for my favourite tasks: output 720p or
+1080p, correct aspect ratio from b2 output, and crop to remove
+borders.
+
+Mainly intended for creating videos from the output of b2, but could
+be multi purpose.
+
+Dependencies: ffmpeg
 
 # Ancient iOS/Xcode Stuff
 
