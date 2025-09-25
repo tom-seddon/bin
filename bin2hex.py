@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import sys,os,os.path,argparse
 
 ##########################################################################
@@ -13,10 +13,10 @@ def main(options):
 
     while True:
         line=i.read(options.num_columns)
-        if line=="": break
+        if line==b'': break
 
         for x in line:
-            o.write("0x%02X,"%ord(x))
+            o.write("0x%02X,"%x)
 
         o.write("\n")
 
