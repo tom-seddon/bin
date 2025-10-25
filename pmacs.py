@@ -93,7 +93,12 @@ def main(options):
     # hmm...
     if sys.platform=="darwin":
         emacsclient=find_emacsclient([
+            # if built from source and dragged into /Applications,
+            # it'll probably be here.
             "/applications/emacs.app/contents/macos/bin/emacsclient",
+
+            # MacPorts puts it here.
+            "/Applications/MacPorts/Emacs.app/Contents/MacOS/bin/emacsclient",
         ])
     elif sys.platform=="win32":
         emacsclient=find_emacsclient([
