@@ -345,6 +345,26 @@ This tells you how the most recent backup differed from the
 penultimate one. Handy if Time Machine backs up a ton of stuff, and
 you're not sure why.
 
+## dtruss.tom
+
+More than somewhat reminiscent of dtruss, but it's in Python, and the
+dtrace bits are in their own file so it can work a bit better with
+Emacs.
+
+Also calls `sudo` for you.
+
+## annotate_dtruss_output
+
+Takes in output from dtruss or dtruss.tom, and outputs it annotated
+with the odd useful bit:
+
+- for a few key syscalls that take an fd, note the path (when it can
+  be determined)
+- add symbolic names for whatever flags/modes/etc. I've found myself
+  in need of
+  
+May not (yet...) parse every possible type of dtruss output.
+
 # TextScripts/
 
 Various text-processing scripts for use with a text editor.
