@@ -103,7 +103,7 @@ def main(options):
     elif sys.platform=="win32":
         emacsclient=find_emacsclient([
             "C:\\emacs\\bin\\emacsclient.exe",
-            "O:\\emacs\\bin\\emacsclient.exe",
+            "D:\\emacs\\bin\\emacsclient.exe",
             r"""D:\tom\bin\emacs\bin\emacsclient.exe""",
         ])
     else: emacsclient="emacsclient"
