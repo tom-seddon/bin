@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# -*- mode:python -*-
+#!/usr/bin/python3
 import argparse,sys,os,os.path,hashlib,stat,fnmatch
 
 g_verbose=False
