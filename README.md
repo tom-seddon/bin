@@ -365,6 +365,12 @@ with the odd useful bit:
   
 May not (yet...) parse every possible type of dtruss output.
 
+## soak
+
+Run a program repeatedly until it returns an non-zero exit code.
+
+Reminiscent of `watch -e`, but you never have to press a key.
+
 # TextScripts/
 
 Various text-processing scripts for use with a text editor.
